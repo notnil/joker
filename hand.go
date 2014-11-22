@@ -81,47 +81,64 @@ type Hand struct {
 	description string
 }
 
-// A HandSorting is the sorting used to determine which hand is selected
-// by NewHand and NewHandWithOptions.  Possible values include High and Low.
-type HandSorting int
+// A handSorting is the sorting used to determine which hand is
+// selected.
+type handSorting int
 
 const (
-	// High is a sorting method that will return the "high hand"
-	High HandSorting = iota
+	// high is a sorting method that will return the "high hand"
+	high handSorting = iota
 
-	// Low is a sorting method that will return the "low hand"
-	Low
+	// low is a sorting method that will return the "low hand"
+	low
 )
 
-// Options is a set of configuration that can be used in the NewHandWithOptions
-// method to customize Hand selection.
-type Options struct {
-	Sorting         HandSorting
-	IgnoreStraights bool
-	IgnoreFlushes   bool
-	AceIsLow        bool
+// Config represents the configuration options for hand selection
+type Config struct {
+	sorting         handSorting
+	ignoreStraights bool
+	ignoreFlushes   bool
+	aceIsLow        bool
 }
 
-// NewHand is a convience method for NewHandWithOptions using the Default Options.
-func NewHand(cards []*Card) *Hand {
-	return NewHandWithOptions(cards, Options{})
+// Low configures NewHand to select the lowest hand in which aces
+// are high and straights and flushes are counted.
+func Low(c *Config) {
+	c.sorting = low
 }
 
-// NewHandWithOptions forms a hand with options to allow for
-// customization of hand selection.  If less than five cards
-// are given, blank cards will be inserted so that a value
+// AceToFiveLow configures NewHand to select the lowest hand in which
+// aces are low and straights and flushes aren't counted.
+func AceToFiveLow(c *Config) {
+	c.sorting = low
+	c.aceIsLow = true
+	c.ignoreStraights = true
+	c.ignoreFlushes = true
+}
+
+// NewHand forms a hand from the given cards and configuration
+// options.  If there are more than five cards, NewHand will return
+// the winning hand out of all five card combinations.  If there are
+// less than five cards, blank cards will be inserted so that a value
 // can still be calculated.
-func NewHandWithOptions(cards []*Card, opts Options) *Hand {
+func NewHand(cards []*Card, options ...func(*Config)) *Hand {
+	c := &Config{}
+	for _, option := range options {
+		option(c)
+	}
+
 	combos := cardCombos(cards)
 	hands := []*Hand{}
-	for _, c := range combos {
-		hand := handForFiveCards(c, opts)
+	for _, combo := range combos {
+		hand := handForFiveCards(combo, *c)
 		hands = append(hands, hand)
 	}
+
 	index := len(hands) - 1
-	if opts.Sorting == Low {
+	if c.sorting == low {
 		index = 0
 	}
+
 	sort.Sort(ByHighHand(hands))
 	return hands[index]
 }
@@ -166,10 +183,9 @@ func (h *Hand) CompareTo(o *Hand) int {
 	return 0
 }
 
-/* MarshalJSON implements the json.Marshaler interface.
-   The json format is:
-   {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
-*/
+// MarshalJSON implements the json.Marshaler interface.
+// The json format is:
+// {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
 func (h *Hand) MarshalJSON() ([]byte, error) {
 	cards := h.Cards()
 	b, err := json.Marshal(&cards)
@@ -181,10 +197,9 @@ func (h *Hand) MarshalJSON() ([]byte, error) {
 	return []byte(s), nil
 }
 
-/* UnmarshalJSON implements the json.Unmarshaler interface.
-   The json format is:
-   {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
-*/
+// UnmarshalJSON implements the json.Unmarshaler interface.
+//  The json format is:
+// {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
 func (h *Hand) UnmarshalJSON(b []byte) error {
 	type handJSON struct {
 		Cards []*Card
@@ -212,10 +227,10 @@ func (a ByHighHand) Less(i, j int) bool {
 	return iHand.CompareTo(jHand) < 0
 }
 
-func handForFiveCards(cards []*Card, opts Options) *Hand {
-	cards = formCards(cards, opts)
+func handForFiveCards(cards []*Card, c Config) *Hand {
+	cards = formCards(cards, c)
 	for _, r := range rankings {
-		if r.vFunc(cards, opts) {
+		if r.vFunc(cards, c) {
 			return &Hand{
 				ranking:     r.r,
 				cards:       cards,
@@ -250,20 +265,20 @@ type ranking struct {
 	dFunc descFunc
 }
 
-type validFunc func([]*Card, Options) bool
+type validFunc func([]*Card, Config) bool
 type descFunc func([]*Card) string
 
 var (
 	highCard = ranking{
 		r: HighCard,
-		vFunc: func(cards []*Card, opts Options) bool {
+		vFunc: func(cards []*Card, c Config) bool {
 			flush := hasFlush(cards)
 			straight := hasStraight(cards)
 			pairs := hasPairs(cards, []int{1, 1, 1, 1, 1})
-			if !opts.IgnoreStraights {
+			if !c.ignoreStraights {
 				pairs = pairs && !straight
 			}
-			if !opts.IgnoreFlushes {
+			if !c.ignoreFlushes {
 				pairs = pairs && !flush
 			}
 			return pairs
@@ -276,7 +291,7 @@ var (
 
 	pair = ranking{
 		r: Pair,
-		vFunc: func(cards []*Card, opts Options) bool {
+		vFunc: func(cards []*Card, c Config) bool {
 			return hasPairs(cards, []int{2, 2, 1, 1, 1})
 		},
 		dFunc: func(cards []*Card) string {
@@ -287,7 +302,7 @@ var (
 
 	twoPair = ranking{
 		r: TwoPair,
-		vFunc: func(cards []*Card, opts Options) bool {
+		vFunc: func(cards []*Card, c Config) bool {
 			return hasPairs(cards, []int{2, 2, 2, 2, 1})
 		},
 		dFunc: func(cards []*Card) string {
@@ -299,7 +314,7 @@ var (
 
 	threeOfAKind = ranking{
 		r: ThreeOfAKind,
-		vFunc: func(cards []*Card, opts Options) bool {
+		vFunc: func(cards []*Card, c Config) bool {
 			return hasPairs(cards, []int{3, 3, 3, 1, 1})
 		},
 		dFunc: func(cards []*Card) string {
@@ -310,8 +325,8 @@ var (
 
 	straight = ranking{
 		r: Straight,
-		vFunc: func(cards []*Card, opts Options) bool {
-			if opts.IgnoreStraights {
+		vFunc: func(cards []*Card, c Config) bool {
+			if c.ignoreStraights {
 				return false
 			}
 			flush := hasFlush(cards)
@@ -326,8 +341,8 @@ var (
 
 	flush = ranking{
 		r: Flush,
-		vFunc: func(cards []*Card, opts Options) bool {
-			if opts.IgnoreFlushes {
+		vFunc: func(cards []*Card, c Config) bool {
+			if c.ignoreFlushes {
 				return false
 			}
 
@@ -343,7 +358,7 @@ var (
 
 	fullHouse = ranking{
 		r: FullHouse,
-		vFunc: func(cards []*Card, opts Options) bool {
+		vFunc: func(cards []*Card, c Config) bool {
 			return hasPairs(cards, []int{3, 3, 3, 2, 2})
 		},
 		dFunc: func(cards []*Card) string {
@@ -355,7 +370,7 @@ var (
 
 	fourOfAKind = ranking{
 		r: FourOfAKind,
-		vFunc: func(cards []*Card, opts Options) bool {
+		vFunc: func(cards []*Card, c Config) bool {
 			return hasPairs(cards, []int{4, 4, 4, 4, 1})
 		},
 		dFunc: func(cards []*Card) string {
@@ -366,8 +381,8 @@ var (
 
 	straightFlush = ranking{
 		r: StraightFlush,
-		vFunc: func(cards []*Card, opts Options) bool {
-			if opts.IgnoreStraights || opts.IgnoreFlushes {
+		vFunc: func(cards []*Card, c Config) bool {
+			if c.ignoreStraights || c.ignoreFlushes {
 				return false
 			}
 			flush := hasFlush(cards)
@@ -382,8 +397,8 @@ var (
 
 	royalFlush = ranking{
 		r: RoyalFlush,
-		vFunc: func(cards []*Card, opts Options) bool {
-			if opts.IgnoreStraights || opts.IgnoreFlushes {
+		vFunc: func(cards []*Card, c Config) bool {
+			if c.ignoreStraights || c.ignoreFlushes {
 				return false
 			}
 			flush := hasFlush(cards)
@@ -399,9 +414,9 @@ var (
 		straight, flush, fullHouse, fourOfAKind, straightFlush, royalFlush}
 )
 
-func formCards(cards []*Card, opts Options) []*Card {
+func formCards(cards []*Card, c Config) []*Card {
 	var ranks []Rank
-	if opts.AceIsLow {
+	if c.aceIsLow {
 		// sort cards staring w/ king
 		sort.Sort(sort.Reverse(byAceLow(cards)))
 		// sort ranks starting w/ king

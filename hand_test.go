@@ -166,7 +166,7 @@ func TestCompareHands(t *testing.T) {
 type testOptionsPairs struct {
 	cards       []*Card
 	arrangement []*Card
-	options     Options
+	options     []func(*Config)
 	ranking     Ranking
 	description string
 }
@@ -175,36 +175,21 @@ var optTests = []testOptionsPairs{
 	{
 		jokertest.Cards("Ks", "Qs", "Js", "As", "9s"),
 		jokertest.Cards("As", "Ks", "Qs", "Js", "9s"),
-		Options{
-			Sorting:         Low,
-			IgnoreStraights: true,
-			IgnoreFlushes:   true,
-			AceIsLow:        false,
-		},
-		HighCard,
-		"high card ace high",
+		[]func(*Config){Low},
+		Flush,
+		"flush ace high",
 	},
 	{
 		jokertest.Cards("7h", "6h", "5s", "4s", "2s", "3s"),
 		jokertest.Cards("6h", "5s", "4s", "3s", "2s"),
-		Options{
-			Sorting:         Low,
-			IgnoreStraights: true,
-			IgnoreFlushes:   true,
-			AceIsLow:        true,
-		},
+		[]func(*Config){AceToFiveLow},
 		HighCard,
 		"high card six high",
 	},
 	{
 		jokertest.Cards("Ah", "6h", "5s", "4s", "2s", "Ks"),
 		jokertest.Cards("6h", "5s", "4s", "2s", "Ah"),
-		Options{
-			Sorting:         Low,
-			IgnoreStraights: true,
-			IgnoreFlushes:   true,
-			AceIsLow:        true,
-		},
+		[]func(*Config){AceToFiveLow},
 		HighCard,
 		"high card six high",
 	},
@@ -212,7 +197,7 @@ var optTests = []testOptionsPairs{
 
 func TestHandsWithOptions(t *testing.T) {
 	for _, test := range optTests {
-		h := NewHandWithOptions(test.cards, test.options)
+		h := NewHand(test.cards, test.options...)
 		if h.Ranking() != test.ranking {
 			t.Fatalf("expected %v got %v", test.ranking, h.Ranking())
 		}

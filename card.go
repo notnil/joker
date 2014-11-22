@@ -9,19 +9,44 @@ import (
 type Rank string
 
 const (
-	Two   Rank = "2"
+	// Two has the rank of 2
+	Two Rank = "2"
+
+	// Three has the rank of 3
 	Three Rank = "3"
-	Four  Rank = "4"
-	Five  Rank = "5"
-	Six   Rank = "6"
+
+	// Four has the rank of 4
+	Four Rank = "4"
+
+	// Five has the rank of 5
+	Five Rank = "5"
+
+	// Six has the rank of 6
+	Six Rank = "6"
+
+	// Seven has the rank of 7
 	Seven Rank = "7"
+
+	// Eight has the rank of 8
 	Eight Rank = "8"
-	Nine  Rank = "9"
-	Ten   Rank = "T"
-	Jack  Rank = "J"
+
+	// Nine has the rank of 9
+	Nine Rank = "9"
+
+	// Ten has the rank of 10
+	Ten Rank = "T"
+
+	// Jack has the rank of J
+	Jack Rank = "J"
+
+	// Queen has the rank of Q
 	Queen Rank = "Q"
-	King  Rank = "K"
-	Ace   Rank = "A"
+
+	// King has the rank of K
+	King Rank = "K"
+
+	// Ace has the rank of A
+	Ace Rank = "A"
 )
 
 // IndexOf returns the index of the rank in the ascending order of ranks.
@@ -126,10 +151,17 @@ var (
 type Suit string
 
 const (
-	Spades   Suit = "♠"
-	Hearts   Suit = "♥"
+	// Spades has a suit of ♠
+	Spades Suit = "♠"
+
+	// Hearts has a suit of ♥
+	Hearts Suit = "♥"
+
+	// Diamonds has a suit of ♦
 	Diamonds Suit = "♦"
-	Clubs    Suit = "♣"
+
+	// Clubs has a suit of ♣
+	Clubs Suit = "♣"
 )
 
 // String returns a string in the format "♠"

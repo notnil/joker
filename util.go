@@ -47,19 +47,19 @@ func combinations(l int, r int) [][]int {
 
 	for {
 		i := r - 1
-		for ; i >= 0 && indices[i] == i+n-r; i -= 1 {
+		for ; i >= 0 && indices[i] == i+n-r; i-- {
 		}
 
 		if i < 0 {
 			break
 		}
 
-		indices[i] += 1
-		for j := i + 1; j < r; j += 1 {
+		indices[i]++
+		for j := i + 1; j < r; j++ {
 			indices[j] = indices[j-1] + 1
 		}
 
-		for ; i < len(indices); i += 1 {
+		for ; i < len(indices); i++ {
 			result[i] = pool[indices[i]]
 		}
 
