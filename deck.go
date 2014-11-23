@@ -37,6 +37,7 @@ func NewDeck() *ShuffledDeck {
 	return &ShuffledDeck{cards: cards, discards: []*Card{}}
 }
 
+// ShuffledDeck implements the Deck interface
 type ShuffledDeck struct {
 	cards    []*Card
 	discards []*Card
