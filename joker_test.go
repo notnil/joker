@@ -1,6 +1,7 @@
 package joker_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	. "github.com/SyntropyDev/joker"
@@ -224,6 +225,22 @@ func TestBlanks(t *testing.T) {
 	hand = NewHand(cards)
 	if hand.Ranking() != Pair {
 		t.Fatal("blank card error")
+	}
+}
+
+func TestCardJSON(t *testing.T) {
+	card := AceSpades
+
+	// to json
+	b, err := json.Marshal(card)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// and back
+	cardCopy := KingHearts
+	if err := json.Unmarshal(b, cardCopy); err != nil {
+		t.Fatal(err)
 	}
 }
 

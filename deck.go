@@ -32,33 +32,39 @@ type Deck interface {
 }
 
 // NewDeck returns a new deck of with 52 shuffled cards.
-func NewDeck() Deck {
+func NewDeck() *ShuffledDeck {
 	cards := shuffleCards(Cards())
-	return &defaultDeck{cards: cards, discards: []*Card{}}
+	return &ShuffledDeck{cards: cards, discards: []*Card{}}
 }
 
-type defaultDeck struct {
+type ShuffledDeck struct {
 	cards    []*Card
 	discards []*Card
 }
 
-func (d *defaultDeck) Discard(cards ...*Card) {
+// Discard adds the given cards to a reservoir of cards that can be
+// used if the deck is empty.
+func (d *ShuffledDeck) Discard(cards ...*Card) {
 	d.discards = append(d.discards, cards...)
 }
 
-func (d *defaultDeck) Len() int {
+// Len return the number of cards remaining in the deck.
+func (d *ShuffledDeck) Len() int {
 	return len(d.cards)
 }
 
-// TODO need to utilize discards if cards required is greater than 52.
-func (d *defaultDeck) Pop() *Card {
+// Pop removes a card from the deck and returns it.  If no card is
+// available then the discards should be shuffled and reused.
+func (d *ShuffledDeck) Pop() *Card {
+	// TODO need to utilize discards if cards required is greater than 52.
 	last := len(d.cards) - 1
 	cards, card := d.cards[:last], d.cards[last]
 	d.cards = cards
 	return card
 }
 
-func (d *defaultDeck) PopMulti(n int) []*Card {
+// PopMulti calls the Pop function on n number of cards.
+func (d *ShuffledDeck) PopMulti(n int) []*Card {
 	cards := []*Card{}
 	for i := 0; i < n; i++ {
 		cards = append(cards, d.Pop())
@@ -66,26 +72,33 @@ func (d *defaultDeck) PopMulti(n int) []*Card {
 	return cards
 }
 
-func (d *defaultDeck) Reset() {
+// Reset restores the deck for a new hand with 52 dealable cards and
+// no discards.
+func (d *ShuffledDeck) Reset() {
 	d.cards = NewDeck().PopMulti(52)
 	d.discards = []*Card{}
 }
 
-func (d *defaultDeck) MarshalJSON() ([]byte, error) {
-	m := map[string][]*Card{
-		"cards":    d.cards,
-		"discards": d.discards,
+type deckJSON struct {
+	Cards    []*Card
+	Discards []*Card
+}
+
+func (d *ShuffledDeck) MarshalJSON() ([]byte, error) {
+	m := &deckJSON{
+		Cards:    d.cards,
+		Discards: d.discards,
 	}
 	return json.Marshal(&m)
 }
 
-func (d *defaultDeck) UnmarshalJSON(data []byte) error {
-	m := map[string][]*Card{}
+func (d *ShuffledDeck) UnmarshalJSON(data []byte) error {
+	m := &deckJSON{}
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
-	d.cards = m["cards"]
-	d.discards = m["discards"]
+	d.cards = m.Cards
+	d.discards = m.Discards
 	return nil
 }
 

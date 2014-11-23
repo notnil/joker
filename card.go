@@ -203,16 +203,24 @@ func (c *Card) MarshalText() ([]byte, error) {
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 // The card is expected to be in the format "4♠".
 func (c *Card) UnmarshalText(text []byte) error {
-	s := string(text)
-	if len(s) == 2 {
-		rank, suit := Rank(s[0]), Suit(s[1])
-		if rank.valid() && suit.valid() {
-			c.rank = rank
-			c.suit = suit
-			return nil
+	var rank Rank
+	var suit Suit
+	const errStr = `card: serialization should be of the format "4♠"`
+	for i, c := range string(text) {
+		if i == 0 && Rank(c).valid() {
+			rank = Rank(c)
+		} else if i == 1 && Suit(c).valid() {
+			suit = Suit(c)
+		} else {
+			return errors.New(errStr)
 		}
 	}
-	return errors.New(`card: serialization should be of the format "4♠"`)
+	if rank == "" || suit == "" {
+		return errors.New(errStr)
+	}
+	c.rank = rank
+	c.suit = suit
+	return nil
 }
 
 var (
