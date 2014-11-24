@@ -238,7 +238,7 @@ func handForFiveCards(cards []*Card, c Config) *Hand {
 			}
 		}
 	}
-	panic("should never get here")
+	panic("unreachable")
 }
 
 func cardCombos(cards []*Card) [][]*Card {
