@@ -1,11 +1,11 @@
-package joker_test
+package hand_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	. "github.com/SyntropyDev/joker"
-	"github.com/SyntropyDev/jokertest"
+	. "github.com/SyntropyDev/joker/hand"
+	"github.com/SyntropyDev/joker/jokertest"
 )
 
 type testPair struct {
@@ -98,7 +98,7 @@ var tests = []testPair{
 
 func TestHands(t *testing.T) {
 	for _, test := range tests {
-		h := NewHand(test.cards)
+		h := New(test.cards)
 		if h.Ranking() != test.ranking {
 			t.Fatalf("expected %v got %v", test.ranking, h.Ranking())
 		}
@@ -130,21 +130,21 @@ type testEquality struct {
 
 var equalityTests = []testEquality{
 	{
-		[]*Card{AceSpades, FiveSpades, FourSpades, ThreeSpades, TwoSpades},
-		[]*Card{KingSpades, KingClubs, KingHearts, JackDiamonds, JackSpades},
+		jokertest.Cards("As", "5s", "4s", "3s", "2s"),
+		jokertest.Cards("Ks", "Kc", "Kh", "Jd", "Js"),
 		greaterThan,
 	},
 	{
-		[]*Card{TenSpades, NineHearts, EightDiamonds, SevenClubs, SixSpades, TwoHearts, ThreeSpades},
-		[]*Card{TenSpades, NineHearts, EightDiamonds, SevenClubs, SixSpades, AceHearts, KingSpades},
+		jokertest.Cards("Ts", "9h", "8d", "7c", "6s", "2h", "3s"),
+		jokertest.Cards("Ts", "9h", "8d", "7c", "6s", "Ah", "Ks"),
 		equalTo,
 	},
 }
 
 func TestCompareHands(t *testing.T) {
 	for _, test := range equalityTests {
-		h1 := NewHand(test.cards1)
-		h2 := NewHand(test.cards2)
+		h1 := New(test.cards1)
+		h2 := New(test.cards2)
 		compareTo := h1.CompareTo(h2)
 
 		switch test.e {
@@ -198,7 +198,7 @@ var optTests = []testOptionsPairs{
 
 func TestHandsWithOptions(t *testing.T) {
 	for _, test := range optTests {
-		h := NewHand(test.cards, test.options...)
+		h := New(test.cards, test.options...)
 		if h.Ranking() != test.ranking {
 			t.Fatalf("expected %v got %v", test.ranking, h.Ranking())
 		}
@@ -216,13 +216,13 @@ func TestHandsWithOptions(t *testing.T) {
 
 func TestBlanks(t *testing.T) {
 	cards := []*Card{AceSpades}
-	hand := NewHand(cards)
+	hand := New(cards)
 	if hand.Ranking() != HighCard {
 		t.Fatal("blank card error")
 	}
 
 	cards = []*Card{FiveSpades, FiveClubs}
-	hand = NewHand(cards)
+	hand = New(cards)
 	if hand.Ranking() != Pair {
 		t.Fatal("blank card error")
 	}
@@ -247,6 +247,6 @@ func TestCardJSON(t *testing.T) {
 func BenchmarkHandCreation(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		cards := NewDeck().PopMulti(7)
-		NewHand(cards)
+		New(cards)
 	}
 }

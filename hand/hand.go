@@ -1,10 +1,12 @@
-package joker
+package hand
 
 import (
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/SyntropyDev/joker/util"
 )
 
 // A Ranking is one of the ten possible hand rankings that determine the
@@ -81,21 +83,29 @@ type Hand struct {
 	description string
 }
 
-// A handSorting is the sorting used to determine which hand is
+// Sorting is the sorting used to determine which hand is
 // selected.
-type handSorting int
+type Sorting int
 
 const (
-	// high is a sorting method that will return the "high hand"
-	high handSorting = iota
+	// SortingHigh is a sorting method that will return the "high hand"
+	SortingHigh Sorting = iota + 1
 
-	// low is a sorting method that will return the "low hand"
-	low
+	// SortingLow is a sorting method that will return the "low hand"
+	SortingLow
+)
+
+type Ordering int
+
+const (
+	ASC Ordering = iota + 1
+
+	DESC
 )
 
 // Config represents the configuration options for hand selection
 type Config struct {
-	sorting         handSorting
+	sorting         Sorting
 	ignoreStraights bool
 	ignoreFlushes   bool
 	aceIsLow        bool
@@ -104,24 +114,24 @@ type Config struct {
 // Low configures NewHand to select the lowest hand in which aces
 // are high and straights and flushes are counted.
 func Low(c *Config) {
-	c.sorting = low
+	c.sorting = SortingLow
 }
 
 // AceToFiveLow configures NewHand to select the lowest hand in which
 // aces are low and straights and flushes aren't counted.
 func AceToFiveLow(c *Config) {
-	c.sorting = low
+	c.sorting = SortingLow
 	c.aceIsLow = true
 	c.ignoreStraights = true
 	c.ignoreFlushes = true
 }
 
-// NewHand forms a hand from the given cards and configuration
-// options.  If there are more than five cards, NewHand will return
+// New forms a hand from the given cards and configuration
+// options.  If there are more than five cards, New will return
 // the winning hand out of all five card combinations.  If there are
 // less than five cards, blank cards will be inserted so that a value
 // can still be calculated.
-func NewHand(cards []*Card, options ...func(*Config)) *Hand {
+func New(cards []*Card, options ...func(*Config)) *Hand {
 	c := &Config{}
 	for _, option := range options {
 		option(c)
@@ -134,13 +144,8 @@ func NewHand(cards []*Card, options ...func(*Config)) *Hand {
 		hands = append(hands, hand)
 	}
 
-	index := len(hands) - 1
-	if c.sorting == low {
-		index = 0
-	}
-
-	sort.Sort(ByHighHand(hands))
-	return hands[index]
+	hands = Sort(c.sorting, DESC, hands...)
+	return hands[0]
 }
 
 // Ranking returns the hand ranking of the hand.
@@ -208,21 +213,39 @@ func (h *Hand) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, m); err != nil {
 		return err
 	}
-	h = NewHand(m.Cards)
+	newHand := New(m.Cards)
+	h.cards = newHand.Cards()
+	h.ranking = newHand.Ranking()
+	h.description = newHand.Description()
 	return nil
 }
 
+// Sort returns a list of hands sorted by the given sorting
+func Sort(s Sorting, o Ordering, hands ...*Hand) []*Hand {
+	handsCopy := make([]*Hand, len(hands))
+	copy(handsCopy, hands)
+
+	high := (o == ASC && s == SortingHigh) || (o == DESC && s == SortingLow)
+	if high {
+		sort.Sort(byHighHand(handsCopy))
+	} else {
+		sort.Sort(sort.Reverse(byHighHand(handsCopy)))
+	}
+
+	return handsCopy
+}
+
 // ByHighHand is a slice of hands sort in ascending value
-type ByHighHand []*Hand
+type byHighHand []*Hand
 
 // Len implements the sort.Interface interface.
-func (a ByHighHand) Len() int { return len(a) }
+func (a byHighHand) Len() int { return len(a) }
 
 // Swap implements the sort.Interface interface.
-func (a ByHighHand) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byHighHand) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 // Less implements the sort.Interface interface.
-func (a ByHighHand) Less(i, j int) bool {
+func (a byHighHand) Less(i, j int) bool {
 	iHand, jHand := a[i], a[j]
 	return iHand.CompareTo(jHand) < 0
 }
@@ -247,7 +270,7 @@ func cardCombos(cards []*Card) [][]*Card {
 	if len(cards) < 5 {
 		l = len(cards)
 	}
-	indexCombos := combinations(len(cards), l)
+	indexCombos := util.Combinations(len(cards), l)
 
 	for _, combo := range indexCombos {
 		cCards := []*Card{}

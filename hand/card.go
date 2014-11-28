@@ -1,4 +1,4 @@
-package joker
+package hand
 
 import (
 	"errors"

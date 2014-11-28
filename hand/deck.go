@@ -1,4 +1,4 @@
-package joker
+package hand
 
 import (
 	"encoding/json"
@@ -11,6 +11,9 @@ import (
 // Discard adds the given cards to a reservoir of cards that can be
 // used if the deck is empty.
 //
+// FromCards forms a deck from its remaining cards and discards.  It
+// is required for serialization.
+//
 // Len return the number of cards remaining in the deck.
 //
 // Pop removes a card from the deck and returns it.  If no card is
@@ -21,11 +24,10 @@ import (
 // Reset restores the deck for a new hand with 52 dealable cards and
 // no discards.
 type Deck interface {
-	json.Marshaler
-	json.Unmarshaler
-
+	Cards() []*Card
 	Discard(cards ...*Card)
-	Len() int
+	Discards() []*Card
+	FromCards(cards, discards []*Card) Deck
 	Pop() *Card
 	PopMulti(n int) []*Card
 	Reset()
@@ -37,10 +39,21 @@ func NewDeck() *ShuffledDeck {
 	return &ShuffledDeck{cards: cards, discards: []*Card{}}
 }
 
+// EmptyDeck returns an deck with no cards
+func EmptyDeck() *ShuffledDeck {
+	return &ShuffledDeck{cards: []*Card{}, discards: []*Card{}}
+}
+
 // ShuffledDeck implements the Deck interface
 type ShuffledDeck struct {
 	cards    []*Card
 	discards []*Card
+}
+
+func (d *ShuffledDeck) Cards() []*Card {
+	cards := make([]*Card, len(d.cards))
+	copy(cards, d.cards)
+	return cards
 }
 
 // Discard adds the given cards to a reservoir of cards that can be
@@ -49,9 +62,19 @@ func (d *ShuffledDeck) Discard(cards ...*Card) {
 	d.discards = append(d.discards, cards...)
 }
 
-// Len return the number of cards remaining in the deck.
-func (d *ShuffledDeck) Len() int {
-	return len(d.cards)
+func (d *ShuffledDeck) Discards() []*Card {
+	cards := make([]*Card, len(d.discards))
+	copy(cards, d.discards)
+	return cards
+}
+
+// FromCards forms a deck from its remaining cards and discards.  It
+// is required for serialization.
+func (d *ShuffledDeck) FromCards(cards, discards []*Card) Deck {
+	return &ShuffledDeck{
+		cards:    cards,
+		discards: discards,
+	}
 }
 
 // Pop removes a card from the deck and returns it.  If no card is
@@ -85,6 +108,7 @@ type deckJSON struct {
 	Discards []*Card
 }
 
+// MarshalJSON implements the json.Marshaler interface
 func (d *ShuffledDeck) MarshalJSON() ([]byte, error) {
 	m := &deckJSON{
 		Cards:    d.cards,
@@ -93,6 +117,7 @@ func (d *ShuffledDeck) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&m)
 }
 
+// UnmarshalJSON implements the json.Unmarshaler interface
 func (d *ShuffledDeck) UnmarshalJSON(data []byte) error {
 	m := &deckJSON{}
 	if err := json.Unmarshal(data, &m); err != nil {
