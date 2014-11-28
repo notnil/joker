@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SyntropyDev/joker"
-	"github.com/SyntropyDev/joker-table"
+	"github.com/SyntropyDev/joker/hand"
+	"github.com/SyntropyDev/joker/table"
 )
 
 const (
@@ -22,20 +22,20 @@ var (
 	tbl *table.Table
 )
 
-type Player struct {
+type player struct {
 	id string
 }
 
-func (p *Player) ID() string {
+func (p *player) ID() string {
 	return p.id
 }
 
-func (p *Player) FromID(id string) table.Player {
-	return &Player{p.ID()}
+func (p *player) FromID(id string) (table.Player, error) {
+	return &player{p.ID()}, nil
 }
 
-func (p *Player) Action() (table.Action, int) {
-	player := tbl.CurrentPlayer()
+func (p *player) Action() (table.Action, int) {
+	current := tbl.CurrentPlayer()
 
 	// get action from input
 	actions := []string{}
@@ -45,7 +45,7 @@ func (p *Player) Action() (table.Action, int) {
 
 	// show info
 	currentInfoFormat := "\nChips %d, Outstanding %d, MinRaise %d, MaxRaise %d"
-	fmt.Printf(currentInfoFormat, player.Chips(), tbl.Outstanding(), tbl.MinRaise(), tbl.MaxRaise())
+	fmt.Printf(currentInfoFormat, current.Chips(), tbl.Outstanding(), tbl.MinRaise(), tbl.MaxRaise())
 
 	// get action from input
 	var input string
@@ -93,7 +93,7 @@ func main() {
 		Stakes:     table.Stakes{SmallBet: 1, BigBet: 2, Ante: 0},
 		NumOfSeats: table.TwoSeats,
 	}
-	tbl = table.New(opts, joker.NewDeck())
+	tbl = table.New(opts, hand.NewDeck())
 	if err := tbl.Sit(p1, 0, 100); err != nil {
 		panic(err)
 	}
@@ -147,7 +147,7 @@ func playerFromInput(desc string) table.Player {
 		fmt.Println("Error", err)
 		return playerFromInput(desc)
 	}
-	return &Player{id: input}
+	return &player{id: input}
 }
 
 func actionFromInput(input string) (table.Action, error) {
