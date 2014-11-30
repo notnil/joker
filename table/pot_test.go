@@ -51,8 +51,8 @@ func TestHighPot(t *testing.T) {
 	}
 
 	board := jokertest.Cards("Ad", "Kd", "Qd", "2d", "2h")
-	hands := newHands(seatToHoleCards, board, Holdem.getGameType().highHand)
-	payout := pot.payout(hands, tableHands(map[int]*hand.Hand{}), winHigh, 0)
+	hands := newHands(seatToHoleCards, board, Holdem.get().FormHighHand)
+	payout := pot.payout(hands, tableHands(map[int]*hand.Hand{}), hand.SortingHigh, false, 0)
 
 	for seat, results := range payout {
 		switch seat {
@@ -102,9 +102,9 @@ func TestHighLowPot(t *testing.T) {
 	}
 
 	board := jokertest.Cards("7s", "Kd", "8h", "Jh", "5c")
-	highHands := newHands(seatToHoleCards, board, OmahaHiLo.getGameType().highHand)
-	lowHands := newHands(seatToHoleCards, board, OmahaHiLo.getGameType().lowHand)
-	payout := pot.payout(highHands, lowHands, winHighLow, 0)
+	highHands := newHands(seatToHoleCards, board, OmahaHiLo.get().FormHighHand)
+	lowHands := newHands(seatToHoleCards, board, OmahaHiLo.get().FormLowHand)
+	payout := pot.payout(highHands, lowHands, hand.SortingHigh, true, 0)
 
 	for seat, results := range payout {
 		switch seat {

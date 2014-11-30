@@ -45,184 +45,151 @@ const (
 
 // String returns the Game's name.
 func (g Game) String() string {
-	return g.getGameType().name
+	return g.get().String()
 }
 
-func (g Game) getGameType() game {
+func (g Game) get() game {
 	switch g {
 	case Holdem:
-		return holdem
+		return &holdemGame{
+			Name:    "Holdem",
+			Split:   false,
+			IsOmaha: false,
+		}
 	case OmahaHi:
-		return omahaHi
+		return &holdemGame{
+			Name:    "Omaha Hi",
+			Split:   false,
+			IsOmaha: true,
+		}
 	case OmahaHiLo:
-		return omahaHiLo
-	case Razz:
-		return razz
+		return &holdemGame{
+			Name:    "Omaha Hi/Lo",
+			Split:   true,
+			IsOmaha: true,
+		}
 	case StudHi:
-		return studHi
+		return &studGame{
+			Name:   "Stud Hi",
+			Split:  false,
+			IsRazz: false,
+		}
+	case Razz:
+		return &studGame{
+			Name:   "Stud Hi",
+			Split:  false,
+			IsRazz: true,
+		}
 	case StudHiLo:
-		return studHiLo
+		return &studGame{
+			Name:   "Stud Hi",
+			Split:  true,
+			IsRazz: false,
+		}
 	}
 	panic("unreachable")
 }
 
-type game struct {
-	name           string
-	numOfRounds    int
-	maxSeats       int
-	winType        winType
-	holeCards      func(deck hand.Deck, r round) []*HoleCard
-	boardCards     func(deck hand.Deck, r round) []*hand.Card
-	highHand       handCreationFunc
-	lowHand        handCreationFunc
-	forcedBet      func(holeCards map[int][]*HoleCard, limit Limit, stakes Stakes, r round, seat, relativePos int) int
-	roundStartSeat func(holeCards map[int][]*HoleCard, r round, numOfPlayers int) int
-	fixedLimit     func(stakes Stakes, r round) int
+type holeCards map[int][]*HoleCard
+
+type game interface {
+	String() string
+	NumOfRounds() int
+	MaxSeats() int
+	HoleCards(deck hand.Deck, r round) []*HoleCard
+	BoardCards(deck hand.Deck, r round) []*hand.Card
+	SplitPot() bool
+	Sorting() hand.Sorting
+	FormHighHand(holeCards []*hand.Card, boardCards []*hand.Card) *hand.Hand
+	FormLowHand(holeCards []*hand.Card, boardCards []*hand.Card) *hand.Hand
+	ForcedBet(holeCards holeCards, opts Options, r round, seat, relativePos int) int
+	RoundStartSeat(holeCards holeCards, r round) int
+	FixedLimit(opts Options, r round) int
 }
 
-var (
-	holdem = game{
-		name:        "Holdem",
-		numOfRounds: holdemNumOfRounds,
-		maxSeats:    holdemMaxSeats,
-		winType:     winHigh,
-		holeCards: func(deck hand.Deck, r round) []*HoleCard {
-			switch r {
-			case preflop:
-				return holeCardsPopMulti(deck, Concealed, 2)
-			}
-			return []*HoleCard{}
-		},
-		boardCards: holdemBoardFunc,
-		highHand: func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			cards := append(board, holeCards...)
-			return hand.New(cards)
-		},
-		forcedBet:      holdemBlinds,
-		roundStartSeat: holdemStartSeatFunc,
-		fixedLimit: func(stakes Stakes, r round) int {
-			switch r {
-			case preflop, flop:
-				return stakes.SmallBet
-			case turn, river:
-				return stakes.BigBet
-			}
-			panic("should not get here")
-		},
+type holdemGame struct {
+	Name    string
+	Split   bool
+	IsOmaha bool
+}
+
+func (g *holdemGame) String() string {
+	return g.Name
+}
+
+func (g *holdemGame) NumOfRounds() int {
+	return 4
+}
+
+func (g *holdemGame) MaxSeats() int {
+	return 10
+}
+
+func (g *holdemGame) HoleCards(deck hand.Deck, r round) []*HoleCard {
+	numOfCards := 2
+	if g.IsOmaha {
+		numOfCards = 4
+	}
+	switch r {
+	case preflop:
+		return holeCardsPopMulti(deck, Concealed, numOfCards)
+	}
+	return []*HoleCard{}
+}
+
+func (g *holdemGame) BoardCards(deck hand.Deck, r round) []*hand.Card {
+	switch r {
+	case flop:
+		return deck.PopMulti(3)
+	case turn:
+		return deck.PopMulti(1)
+	case river:
+		return deck.PopMulti(1)
+	}
+	return []*hand.Card{}
+}
+
+func (g *holdemGame) SplitPot() bool {
+	return g.Split
+}
+
+func (g *holdemGame) Sorting() hand.Sorting {
+	return hand.SortingHigh
+}
+
+func (g *holdemGame) FormHighHand(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+	if !g.IsOmaha {
+		cards := append(board, holeCards...)
+		return hand.New(cards)
 	}
 
-	omahaHi = game{
-		name:        "Omaha Hi",
-		numOfRounds: holdemNumOfRounds,
-		maxSeats:    holdemMaxSeats,
-		winType:     winHigh,
-		holeCards: func(deck hand.Deck, r round) []*HoleCard {
-			switch r {
-			case preflop:
-				return holeCardsPopMulti(deck, Concealed, 4)
-			}
-			return []*HoleCard{}
-		},
-		boardCards:     holdemBoardFunc,
-		highHand:       omahaHighHand,
-		forcedBet:      holdemBlinds,
-		roundStartSeat: holdemStartSeatFunc,
+	opts := func(c *hand.Config) {}
+	hands := omahaHands(holeCards, board, opts)
+	hands = hand.Sort(hand.SortingHigh, hand.DESC, hands...)
+	return hands[0]
+}
+
+func (g *holdemGame) FormLowHand(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+	hands := omahaHands(holeCards, board, hand.AceToFiveLow)
+	hands = hand.Sort(hand.SortingLow, hand.DESC, hands...)
+	if hands[0].CompareTo(eightOrBetter) <= 0 {
+		return hands[0]
 	}
+	return nil
+}
 
-	omahaHiLo = game{
-		name:        "Omaha Hi/Lo",
-		numOfRounds: holdemNumOfRounds,
-		maxSeats:    holdemMaxSeats,
-		winType:     winHighLow,
-		holeCards: func(deck hand.Deck, r round) []*HoleCard {
-			switch r {
-			case preflop:
-				return holeCardsPopMulti(deck, Concealed, 4)
-			}
-			return []*HoleCard{}
-		},
-		boardCards: holdemBoardFunc,
-		highHand:   omahaHighHand,
-		lowHand: func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			hands := omahaHands(holeCards, board, hand.AceToFiveLow)
-			hands = hand.Sort(hand.SortingLow, hand.DESC, hands...)
-			if hands[0].CompareTo(eightOrBetter) <= 0 {
-				return hands[0]
-			}
-			return nil
-		},
-		forcedBet:      holdemBlinds,
-		roundStartSeat: holdemStartSeatFunc,
-	}
-
-	razz = game{
-		name:        "Razz",
-		numOfRounds: studNumOfRounds,
-		maxSeats:    studMaxSeats,
-		winType:     winLow,
-		holeCards:   studHoleCardFunc,
-		boardCards:  studBoardFunc,
-		lowHand: func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			return hand.New(holeCards, hand.AceToFiveLow)
-		},
-		forcedBet:      studBringIn(winHigh),
-		roundStartSeat: studRoundStartSeat(winHigh, winLow),
-	}
-
-	studHi = game{
-		name:        "Stud Hi",
-		numOfRounds: studNumOfRounds,
-		maxSeats:    studMaxSeats,
-		winType:     winHigh,
-		holeCards:   studHoleCardFunc,
-		boardCards:  studBoardFunc,
-		highHand: func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			return hand.New(holeCards)
-		},
-		forcedBet:      studBringIn(winLow),
-		roundStartSeat: studRoundStartSeat(winLow, winHigh),
-	}
-
-	studHiLo = game{
-		name:        "Stud Hi/Lo",
-		numOfRounds: studNumOfRounds,
-		maxSeats:    studMaxSeats,
-		winType:     winHighLow,
-		holeCards:   studHoleCardFunc,
-		boardCards:  studBoardFunc,
-		highHand: func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			return hand.New(holeCards)
-		},
-		lowHand: func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			hand := hand.New(holeCards, hand.AceToFiveLow)
-			if hand.CompareTo(eightOrBetter) <= 0 {
-				return hand
-			}
-			return nil
-		},
-		forcedBet:      studBringIn(winLow),
-		roundStartSeat: studRoundStartSeat(winLow, winHigh),
-	}
-)
-
-func holdemBlinds(
-	holeCards map[int][]*HoleCard,
-	limit Limit,
-	stakes Stakes,
-	r round,
-	seat, relativePos int) int {
-
+func (g *holdemGame) ForcedBet(holeCards holeCards, opts Options, r round, seat, relativePos int) int {
 	chips := 0
 	if r != preflop {
 		return chips
 	}
 
-	chips += stakes.Ante
+	chips += opts.Stakes.Ante
 
 	// reduce blind sizes if fixed limit
-	smallBet := stakes.SmallBet
-	bigBet := stakes.BigBet
-	if limit == FixedLimit {
+	smallBet := opts.Stakes.SmallBet
+	bigBet := opts.Stakes.BigBet
+	if opts.Limit == FixedLimit {
 		smallBet /= 2
 		bigBet /= 2
 	}
@@ -246,6 +213,137 @@ func holdemBlinds(
 	return chips
 }
 
+func (g *holdemGame) RoundStartSeat(holeCards holeCards, r round) int {
+	numOfPlayers := len(holeCards)
+	if r != preflop {
+		return 1
+	}
+	switch numOfPlayers {
+	case 2, 3:
+		return 0
+	}
+	return 3
+}
+
+func (g *holdemGame) FixedLimit(opts Options, r round) int {
+	switch r {
+	case turn, river:
+		return opts.Stakes.BigBet
+	}
+	return opts.Stakes.SmallBet
+}
+
+type studGame struct {
+	Name   string
+	Split  bool
+	IsRazz bool
+}
+
+func (g *studGame) String() string {
+	return g.Name
+}
+
+func (g *studGame) NumOfRounds() int {
+	return 5
+}
+
+func (g *studGame) MaxSeats() int {
+	return 8
+}
+
+func (g *studGame) HoleCards(deck hand.Deck, r round) []*HoleCard {
+	switch r {
+	case thirdSt:
+		cards := holeCardsPopMulti(deck, Concealed, 2)
+		cards = append(cards, newHoleCard(deck.Pop(), Exposed))
+		return cards
+	case fourthSt:
+		return holeCardsPopMulti(deck, Exposed, 1)
+	case fifthSt:
+		return holeCardsPopMulti(deck, Exposed, 1)
+	case sixthSt:
+		return holeCardsPopMulti(deck, Exposed, 1)
+	case seventhSt:
+		return holeCardsPopMulti(deck, Concealed, 1)
+	}
+	return []*HoleCard{}
+}
+
+// TODO: take into account running out of cards
+func (g *studGame) BoardCards(deck hand.Deck, r round) []*hand.Card {
+	return []*hand.Card{}
+}
+
+func (g *studGame) SplitPot() bool {
+	return g.Split
+}
+
+func (g *studGame) Sorting() hand.Sorting {
+	if g.IsRazz {
+		return hand.SortingLow
+	}
+	return hand.SortingHigh
+}
+
+func (g *studGame) FormHighHand(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+	cards := append(board, holeCards...)
+	if g.IsRazz {
+		return hand.New(cards, hand.AceToFiveLow)
+	}
+	return hand.New(cards)
+}
+
+func (g *studGame) FormLowHand(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+	cards := append(board, holeCards...)
+	hand := hand.New(cards, hand.AceToFiveLow)
+	if hand.CompareTo(eightOrBetter) <= 0 {
+		return hand
+	}
+	return nil
+}
+
+func (g *studGame) ForcedBet(holeCards holeCards, opts Options, r round, seat, relativePos int) int {
+	chips := 0
+	if r != thirdSt {
+		return chips
+	}
+
+	chips += opts.Stakes.Ante
+	startSeat := g.RoundStartSeat(holeCards, r)
+	if startSeat == seat {
+		chips += opts.Stakes.SmallBet
+	}
+
+	return chips
+}
+
+func (g *studGame) RoundStartSeat(holeCards holeCards, r round) int {
+	exposed := exposedCards(holeCards)
+	f := func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+		return hand.New(holeCards)
+	}
+
+	wt := winLow
+	if (r != thirdSt && !g.IsRazz) || (r == thirdSt && g.IsRazz) {
+		wt = winHigh
+	}
+	hands := newHands(exposed, []*hand.Card{}, f)
+	hands = hands.WinningHands(wt)
+
+	for seat := range hands {
+		return seat
+	}
+	panic("unreachable")
+}
+
+func (g *studGame) FixedLimit(opts Options, r round) int {
+	switch r {
+	case thirdSt, fourthSt:
+		return opts.Stakes.SmallBet
+	}
+	return opts.Stakes.BigBet
+}
+
 func omahaHands(holeCards []*hand.Card, board []*hand.Card, opts func(*hand.Config)) []*hand.Hand {
 	hands := []*hand.Hand{}
 	for _, indexes := range util.Combinations(4, 2) {
@@ -257,46 +355,6 @@ func omahaHands(holeCards []*hand.Card, board []*hand.Card, opts func(*hand.Conf
 		hands = append(hands, hand.New(cards, opts))
 	}
 	return hands
-}
-
-// TODO fix bring in sizes for fixed limit
-func studBringIn(winType winType) func(map[int][]*HoleCard, Limit, Stakes, round, int, int) int {
-	return func(holeCards map[int][]*HoleCard, limit Limit, stakes Stakes, r round, seat, relativePos int) int {
-		chips := 0
-		if r != thirdSt {
-			return chips
-		}
-
-		chips += stakes.Ante
-		f := studRoundStartSeat(winType, winHigh)
-		startSeat := f(holeCards, r, len(holeCards))
-		if startSeat == seat {
-			chips += stakes.SmallBet
-		}
-
-		return chips
-	}
-}
-
-func studRoundStartSeat(w1 winType, w2 winType) func(map[int][]*HoleCard, round, int) int {
-	return func(holeCards map[int][]*HoleCard, r round, numOfPlayers int) int {
-		exposed := exposedCards(holeCards)
-		f := func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-			return hand.New(holeCards)
-		}
-
-		hands := newHands(exposed, []*hand.Card{}, f)
-		if r == thirdSt {
-			hands = hands.WinningHands(w1)
-		} else {
-			hands = hands.WinningHands(w2)
-		}
-
-		for seat := range hands {
-			return seat
-		}
-		panic("should not get here")
-	}
 }
 
 func exposedCards(holeCards map[int][]*HoleCard) map[int][]*HoleCard {
@@ -353,60 +411,6 @@ const (
 )
 
 var (
-	holdemBoardFunc = func(deck hand.Deck, r round) []*hand.Card {
-		switch r {
-		case flop:
-			return deck.PopMulti(3)
-		case turn:
-			return deck.PopMulti(1)
-		case river:
-			return deck.PopMulti(1)
-		}
-		return []*hand.Card{}
-	}
-
-	omahaHighHand = func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
-		opts := func(c *hand.Config) {}
-		hands := omahaHands(holeCards, board, opts)
-		hands = hand.Sort(hand.SortingHigh, hand.DESC, hands...)
-		return hands[0]
-	}
-
-	studHoleCardFunc = func(deck hand.Deck, r round) []*HoleCard {
-		switch r {
-		case thirdSt:
-			cards := holeCardsPopMulti(deck, Concealed, 2)
-			cards = append(cards, newHoleCard(deck.Pop(), Exposed))
-			return cards
-		case fourthSt:
-			return holeCardsPopMulti(deck, Exposed, 1)
-		case fifthSt:
-			return holeCardsPopMulti(deck, Exposed, 1)
-		case sixthSt:
-			return holeCardsPopMulti(deck, Exposed, 1)
-		case seventhSt:
-			return holeCardsPopMulti(deck, Concealed, 1)
-		}
-		return []*HoleCard{}
-	}
-
-	studBoardFunc = func(deck hand.Deck, r round) []*hand.Card {
-		return []*hand.Card{}
-	}
-
-	holdemStartSeatFunc = func(holeCards map[int][]*HoleCard, r round, numOfPlayers int) int {
-		if r != preflop {
-			return 1
-		}
-
-		switch numOfPlayers {
-		case 2, 3:
-			return 0
-		default:
-			return 3
-		}
-	}
-
 	eightOrBetter = hand.New([]*hand.Card{
 		hand.EightSpades,
 		hand.SevenSpades,

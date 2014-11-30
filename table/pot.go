@@ -128,7 +128,8 @@ func (p *Pot) take(seat int) map[int][]*PotResult {
 	return results
 }
 
-func (p *Pot) payout(highHands, lowHands tableHands, winType winType, button int) map[int][]*PotResult {
+func (p *Pot) payout(highHands, lowHands tableHands, sorting hand.Sorting, split bool, button int) map[int][]*PotResult {
+	// func (p *Pot) payout(highHands, lowHands tableHands, winType winType, button int) map[int][]*PotResult {
 	results := map[int][]*PotResult{}
 	for _, sidePot := range p.sidePots() {
 		highResults := map[int]*PotResult{}
@@ -136,14 +137,8 @@ func (p *Pot) payout(highHands, lowHands tableHands, winType winType, button int
 		seats := sidePot.seats()
 		sideHighHands := highHands.HandsForSeats(seats)
 		sideLowHands := lowHands.HandsForSeats(seats)
-		switch winType {
-		case winHigh:
-			winners := sideHighHands.WinningHands(winHigh)
-			highResults = resultsFromWinners(winners, sidePot.Chips(), highPotShare)
-		case winLow:
-			winners := sideHighHands.WinningHands(winLow)
-			lowResults = resultsFromWinners(winners, sidePot.Chips(), lowPotShare)
-		case winHighLow:
+
+		if split {
 			highWinners := sideHighHands.WinningHands(winHigh)
 			lowWinners := sideLowHands.WinningHands(winLow)
 			if len(lowWinners) > 0 {
@@ -156,7 +151,17 @@ func (p *Pot) payout(highHands, lowHands tableHands, winType winType, button int
 			} else {
 				highResults = resultsFromWinners(highWinners, sidePot.Chips(), highPotShare)
 			}
+		} else {
+			switch sorting {
+			case hand.SortingHigh:
+				winners := sideHighHands.WinningHands(winHigh)
+				highResults = resultsFromWinners(winners, sidePot.Chips(), highPotShare)
+			case hand.SortingLow:
+				winners := sideHighHands.WinningHands(winLow)
+				lowResults = resultsFromWinners(winners, sidePot.Chips(), lowPotShare)
+			}
 		}
+
 		for seat, result := range highResults {
 			results[seat] = append(results[seat], result)
 		}

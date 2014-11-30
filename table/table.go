@@ -251,10 +251,7 @@ func (state *PlayerState) UnmarshalJSON(b []byte) error {
 // Table represent a poker table and dealer.  A table manages the
 // game state and all player interactions at the table.
 type Table struct {
-	game        Game
-	limit       Limit
-	stakes      Stakes
-	numOfSeats  int
+	opts        Options
 	deck        hand.Deck
 	button      int
 	action      int
@@ -271,22 +268,19 @@ type Table struct {
 // Next() function must be called.  If the number of seats is invalid
 // for the Game specified New panics.
 func New(opts Options, deck hand.Deck) *Table {
-	if int(opts.NumOfSeats) > opts.Game.getGameType().maxSeats {
+	if int(opts.NumOfSeats) > opts.Game.get().MaxSeats() {
 		format := "table: %s has a maximum of %d seats but attempted %d"
-		s := fmt.Sprintf(format, opts.Game, opts.Game.getGameType().maxSeats, opts.NumOfSeats)
+		s := fmt.Sprintf(format, opts.Game, opts.Game.get().MaxSeats(), opts.NumOfSeats)
 		panic(s)
 	}
 
 	return &Table{
-		game:       opts.Game,
-		limit:      opts.Limit,
-		stakes:     opts.Stakes,
-		numOfSeats: int(opts.NumOfSeats),
-		deck:       deck,
-		board:      []*hand.Card{},
-		players:    map[int]*PlayerState{},
-		pot:        newPot(int(opts.NumOfSeats)),
-		action:     -1,
+		opts:    opts,
+		deck:    deck,
+		board:   []*hand.Card{},
+		players: map[int]*PlayerState{},
+		pot:     newPot(int(opts.NumOfSeats)),
+		action:  -1,
 	}
 }
 
@@ -317,12 +311,12 @@ func (t *Table) CurrentPlayer() *PlayerState {
 
 // Game returns the game of the table.
 func (t *Table) Game() Game {
-	return t.game
+	return t.opts.Game
 }
 
 // Limit returns the limit of the table.
 func (t *Table) Limit() Limit {
-	return t.limit
+	return t.opts.Limit
 }
 
 // MaxRaise returns the maximum number of chips that can be bet or
@@ -347,11 +341,11 @@ func (t *Table) MaxRaise() int {
 	}
 
 	max := bettableChips
-	switch t.limit {
+	switch t.opts.Limit {
 	case PotLimit:
 		max = t.pot.Chips() + outstanding
 	case FixedLimit:
-		max = t.gameType().fixedLimit(t.stakes, round(t.round))
+		max = t.game().FixedLimit(t.opts, round(t.round))
 	}
 	if max > bettableChips {
 		max = bettableChips
@@ -383,7 +377,7 @@ func (t *Table) MinRaise() int {
 
 // NumOfSeats returns the number of seats.
 func (t *Table) NumOfSeats() int {
-	return t.numOfSeats
+	return int(t.opts.NumOfSeats)
 }
 
 // Outstanding returns the number of chips owed to the pot by the
@@ -431,10 +425,7 @@ func (t *Table) View(p Player) *Table {
 	}
 
 	return &Table{
-		game:        t.game,
-		limit:       t.limit,
-		stakes:      t.stakes,
-		numOfSeats:  t.numOfSeats,
+		opts:        t.opts,
 		deck:        hand.EmptyDeck(),
 		button:      t.button,
 		action:      t.action,
@@ -459,7 +450,7 @@ func (t *Table) Round() int {
 
 // Stakes returns the stakes.
 func (t *Table) Stakes() Stakes {
-	return t.stakes
+	return t.opts.Stakes
 }
 
 // String returns a string useful for debugging.
@@ -516,10 +507,10 @@ func (t *Table) Next() (results map[int][]*PotResult, done bool, err error) {
 	if t.action == -1 {
 		t.round++
 
-		if t.round == t.gameType().numOfRounds {
-			highHands := newHands(t.holeCards(), t.board, t.gameType().highHand)
-			lowHands := newHands(t.holeCards(), t.board, t.gameType().lowHand)
-			results = t.pot.payout(highHands, lowHands, t.gameType().winType, t.button)
+		if t.round == t.game().NumOfRounds() {
+			highHands := newHands(t.holeCards(), t.board, t.game().FormHighHand)
+			lowHands := newHands(t.holeCards(), t.board, t.game().FormLowHand)
+			results = t.pot.payout(highHands, lowHands, t.game().Sorting(), t.game().SplitPot(), t.button)
 			t.payoutResults(results)
 			t.startedHand = false
 			return results, false, nil
@@ -566,8 +557,8 @@ func (t *Table) Sit(p Player, seat, chips int) error {
 		return NewSeatOccupied(seat)
 	}
 
-	min := (t.stakes.SmallBet * 50)
-	max := (t.stakes.SmallBet * 200)
+	min := (t.opts.Stakes.SmallBet * 50)
+	max := (t.opts.Stakes.SmallBet * 200)
 	if chips < min || chips > max {
 		return NewInvalidBuyIn(chips)
 	}
@@ -592,10 +583,7 @@ func (t *Table) Stand(p Player) {
 }
 
 type tableJSON struct {
-	Game        Game                    `json:"game"`
-	Limit       Limit                   `json:"limit"`
-	Stakes      Stakes                  `json:"stakes"`
-	NumOfSeats  int                     `json:"numOfSeats"`
+	Options     Options                 `json:"options"`
 	Cards       []*hand.Card            `json:"cards"`
 	Discards    []*hand.Card            `json:"discards"`
 	Button      int                     `json:"button"`
@@ -616,10 +604,7 @@ func (t *Table) MarshalJSON() ([]byte, error) {
 	}
 
 	tJSON := &tableJSON{
-		Game:        t.Game(),
-		Limit:       t.Limit(),
-		Stakes:      t.Stakes(),
-		NumOfSeats:  t.NumOfSeats(),
+		Options:     t.opts,
 		Cards:       t.deck.Cards(),
 		Discards:    t.deck.Discards(),
 		Button:      t.Button(),
@@ -654,10 +639,7 @@ func (t *Table) UnmarshalJSON(b []byte) error {
 		players[int(i)] = player
 	}
 
-	t.game = tJSON.Game
-	t.limit = tJSON.Limit
-	t.stakes = tJSON.Stakes
-	t.numOfSeats = tJSON.NumOfSeats
+	t.opts = tJSON.Options
 	t.deck = registeredDeck.FromCards(tJSON.Cards, tJSON.Discards)
 	t.button = tJSON.Button
 	t.action = tJSON.Action
@@ -676,7 +658,7 @@ func (t *Table) setUpHand() {
 	t.round = 0
 	t.button = t.nextSeat(t.button+1, false)
 	t.action = -1
-	t.pot = newPot(t.numOfSeats)
+	t.pot = newPot(t.NumOfSeats())
 
 	// reset cards
 	t.board = []*hand.Card{}
@@ -689,28 +671,28 @@ func (t *Table) setUpHand() {
 
 func (t *Table) setUpRound() {
 	// deal board cards
-	bCards := t.gameType().boardCards(t.deck, round(t.round))
+	bCards := t.game().BoardCards(t.deck, round(t.round))
 	t.board = append(t.board, bCards...)
 	t.resetActed()
 
 	for seat, player := range t.players {
 		// add hole cards
-		hCards := t.gameType().holeCards(t.deck, round(t.round))
+		hCards := t.game().HoleCards(t.deck, round(t.round))
 		player.holeCards = append(player.holeCards, hCards...)
 
 		// add forced bets
 		pos := t.relativePosition(seat)
-		chips := t.gameType().forcedBet(t.holeCards(), t.limit, t.stakes, round(t.round), seat, pos)
+		chips := t.game().ForcedBet(t.holeCards(), t.opts, round(t.round), seat, pos)
 		t.addToPot(seat, chips)
 	}
 
 	// set starting action position
-	relativePos := t.gameType().roundStartSeat(t.holeCards(), round(t.round), len(t.players))
-	seat := (relativePos + t.button) % t.numOfSeats
+	relativePos := t.game().RoundStartSeat(t.holeCards(), round(t.round))
+	seat := (relativePos + t.button) % t.NumOfSeats()
 	t.action = t.nextSeat(seat, true)
 
 	// set raise amounts
-	t.minRaise = t.stakes.BigBet
+	t.minRaise = t.opts.Stakes.BigBet
 	t.resetCanRaise(-1)
 
 	// if everyone is all in, skip round
@@ -794,14 +776,14 @@ func (t *Table) addToPot(seat, chips int) {
 
 func (t *Table) nextSeat(seat int, playing bool) int {
 	count := 0
-	seat = seat % t.numOfSeats
-	for count < t.numOfSeats {
+	seat = seat % t.NumOfSeats()
+	for count < t.NumOfSeats() {
 		p, ok := t.players[seat]
 		if ok && (!playing || (!p.out && !p.allin && !p.acted)) {
 			return seat
 		}
 		count++
-		seat = (seat + 1) % t.numOfSeats
+		seat = (seat + 1) % t.NumOfSeats()
 	}
 	return -1
 }
@@ -816,10 +798,6 @@ func (t *Table) hasNextHand() bool {
 	return count > 1
 }
 
-func (t *Table) gameType() game {
-	return t.game.getGameType()
-}
-
 func (t *Table) isSeated(p Player) bool {
 	for _, pl := range t.players {
 		if p.ID() == pl.player.ID() {
@@ -830,7 +808,7 @@ func (t *Table) isSeated(p Player) bool {
 }
 
 func (t *Table) validSeat(seat int) bool {
-	return seat >= 0 && seat < t.numOfSeats
+	return seat >= 0 && seat < t.NumOfSeats()
 }
 
 func (t *Table) relativePosition(seat int) int {
@@ -874,6 +852,10 @@ func (t *Table) everyoneFolded() bool {
 		}
 	}
 	return count < 2
+}
+
+func (t *Table) game() game {
+	return t.opts.Game.get()
 }
 
 func isNil(o interface{}) bool {

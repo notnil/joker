@@ -3,7 +3,6 @@ package table
 import "github.com/SyntropyDev/joker/hand"
 
 type tableHands map[int]*hand.Hand
-
 type handCreationFunc func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand
 
 func newHands(
