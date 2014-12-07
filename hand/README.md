@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	deck := hand.NewDeck()
+	deck := hand.NewDealer().Deck()
 	h1 := hand.New(deck.PopMulti(5))
 	h2 := hand.New(deck.PopMulti(5))
 

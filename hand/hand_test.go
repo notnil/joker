@@ -228,6 +228,17 @@ func TestBlanks(t *testing.T) {
 	}
 }
 
+func TestDeck(t *testing.T) {
+	deck := NewDealer().Deck()
+	if deck.Pop() == deck.Pop() {
+		t.Fatal("Two Pop() calls should never return the same result")
+	}
+	l := len(deck.Cards)
+	if l != 50 {
+		t.Fatalf("After Pop() deck len = %d; want %d", l, 50)
+	}
+}
+
 func TestCardJSON(t *testing.T) {
 	card := AceSpades
 
@@ -246,7 +257,7 @@ func TestCardJSON(t *testing.T) {
 
 func BenchmarkHandCreation(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		cards := NewDeck().PopMulti(7)
+		cards := NewDealer().Deck().PopMulti(7)
 		New(cards)
 	}
 }

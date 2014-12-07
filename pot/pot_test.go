@@ -1,4 +1,4 @@
-package table
+package pot_test
 
 import (
 	"encoding/json"
@@ -6,19 +6,20 @@ import (
 
 	"github.com/SyntropyDev/joker/hand"
 	"github.com/SyntropyDev/joker/jokertest"
+	"github.com/SyntropyDev/joker/pot"
 )
 
 func TestPotJSON(t *testing.T) {
-	pot := newPot(3)
-	pot.contribute(0, 1)
+	p := pot.New(3)
+	p.Contribute(0, 1)
 
-	b, err := json.Marshal(pot)
+	b, err := json.Marshal(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// unmarshal from json
-	p := &Pot{}
+	p = &pot.Pot{}
 	if err := json.Unmarshal(b, p); err != nil {
 		t.Fatal(err)
 	}
@@ -30,10 +31,10 @@ func TestPotJSON(t *testing.T) {
 func TestHighPot(t *testing.T) {
 	t.Parallel()
 
-	pot := newPot(3)
-	pot.contribute(0, 5)
-	pot.contribute(1, 10)
-	pot.contribute(2, 15)
+	p := pot.New(3)
+	p.Contribute(0, 5)
+	p.Contribute(1, 10)
+	p.Contribute(2, 15)
 
 	seatToHoleCards := map[int][]*HoleCard{
 		0: []*HoleCard{

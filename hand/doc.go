@@ -1,3 +1,5 @@
+//go:generate stringer -type=Ranking,Sorting,Ordering -output=stringer_autogen.go
+
 /*
 Package hand implements poker hand evaluation and ranking.
 
@@ -16,7 +18,7 @@ Example usage:
 	)
 
 	func main() {
-		deck := hand.NewDeck()
+		deck := hand.NewDealer().Deck()
 		h1 := hand.New(deck.PopMulti(5))
 		h2 := hand.New(deck.PopMulti(5))
 

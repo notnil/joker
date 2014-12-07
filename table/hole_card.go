@@ -35,7 +35,7 @@ func newHoleCard(card *hand.Card, visibility CardVisibility) *HoleCard {
 	return &HoleCard{card, visibility}
 }
 
-func holeCardsPopMulti(d hand.Deck, v CardVisibility, n int) []*HoleCard {
+func holeCardsPopMulti(d *hand.Deck, v CardVisibility, n int) []*HoleCard {
 	cards := d.PopMulti(n)
 	holeCards := []*HoleCard{}
 	for _, c := range cards {

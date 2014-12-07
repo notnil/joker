@@ -1,94 +1,27 @@
 package hand
 
 import (
-	"encoding/json"
 	"math/rand"
+	"strings"
 	"time"
 )
 
-// Deck is the interface that manages cards in a perserved order.
-//
-// Discard adds the given cards to a reservoir of cards that can be
-// used if the deck is empty.
-//
-// FromCards forms a deck from its remaining cards and discards.  It
-// is required for serialization.
-//
-// Len return the number of cards remaining in the deck.
-//
-// Pop removes a card from the deck and returns it.  If no card is
-// available then the discards should be shuffled and reused.
-//
-// PopMulti calls the Pop function on n number of cards.
-//
-// Reset restores the deck for a new hand with 52 dealable cards and
-// no discards.
-type Deck interface {
-	Cards() []*Card
-	Discard(cards ...*Card)
-	Discards() []*Card
-	FromCards(cards, discards []*Card) Deck
-	Pop() *Card
-	PopMulti(n int) []*Card
-	Reset()
+// Deck is a slice of cards used for dealing
+type Deck struct {
+	Cards []*Card
 }
 
-// NewDeck returns a new deck of with 52 shuffled cards.
-func NewDeck() *ShuffledDeck {
-	cards := shuffleCards(Cards())
-	return &ShuffledDeck{cards: cards, discards: []*Card{}}
-}
-
-// EmptyDeck returns an deck with no cards
-func EmptyDeck() *ShuffledDeck {
-	return &ShuffledDeck{cards: []*Card{}, discards: []*Card{}}
-}
-
-// ShuffledDeck implements the Deck interface
-type ShuffledDeck struct {
-	cards    []*Card
-	discards []*Card
-}
-
-func (d *ShuffledDeck) Cards() []*Card {
-	cards := make([]*Card, len(d.cards))
-	copy(cards, d.cards)
-	return cards
-}
-
-// Discard adds the given cards to a reservoir of cards that can be
-// used if the deck is empty.
-func (d *ShuffledDeck) Discard(cards ...*Card) {
-	d.discards = append(d.discards, cards...)
-}
-
-func (d *ShuffledDeck) Discards() []*Card {
-	cards := make([]*Card, len(d.discards))
-	copy(cards, d.discards)
-	return cards
-}
-
-// FromCards forms a deck from its remaining cards and discards.  It
-// is required for serialization.
-func (d *ShuffledDeck) FromCards(cards, discards []*Card) Deck {
-	return &ShuffledDeck{
-		cards:    cards,
-		discards: discards,
-	}
-}
-
-// Pop removes a card from the deck and returns it.  If no card is
-// available then the discards should be shuffled and reused.
-func (d *ShuffledDeck) Pop() *Card {
-	// TODO need to utilize discards if cards required is greater than 52.
-	last := len(d.cards) - 1
-	cards, card := d.cards[:last], d.cards[last]
-	d.cards = cards
+// Pop removes a card from the deck and returns it.  Pop
+// panics if no cards are available.
+func (d *Deck) Pop() *Card {
+	last := len(d.Cards) - 1
+	card := d.Cards[last]
+	d.Cards = d.Cards[:last]
 	return card
 }
 
 // PopMulti calls the Pop function on n number of cards.
-func (d *ShuffledDeck) PopMulti(n int) []*Card {
+func (d *Deck) PopMulti(n int) []*Card {
 	cards := []*Card{}
 	for i := 0; i < n; i++ {
 		cards = append(cards, d.Pop())
@@ -96,36 +29,50 @@ func (d *ShuffledDeck) PopMulti(n int) []*Card {
 	return cards
 }
 
-// Reset restores the deck for a new hand with 52 dealable cards and
-// no discards.
-func (d *ShuffledDeck) Reset() {
-	d.cards = NewDeck().PopMulti(52)
-	d.discards = []*Card{}
-}
-
-type deckJSON struct {
-	Cards    []*Card
-	Discards []*Card
-}
-
-// MarshalJSON implements the json.Marshaler interface
-func (d *ShuffledDeck) MarshalJSON() ([]byte, error) {
-	m := &deckJSON{
-		Cards:    d.cards,
-		Discards: d.discards,
+// String implements the fmt.Stringer interface
+func (d *Deck) String() string {
+	s := []string{}
+	for _, c := range d.Cards {
+		s = append(s, c.String())
 	}
-	return json.Marshal(&m)
+	return strings.Join(s, ",")
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface
-func (d *ShuffledDeck) UnmarshalJSON(data []byte) error {
-	m := &deckJSON{}
-	if err := json.Unmarshal(data, &m); err != nil {
-		return err
+// MarshalText implements the encoding.TextMarshaler interface
+func (d *Deck) MarshalText() (text []byte, err error) {
+	return []byte(d.String()), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface
+func (d *Deck) UnmarshalText(text []byte) error {
+	strs := strings.Split(string(text), ",")
+	cards := make([]*Card, len(strs))
+	for i, s := range strs {
+		card := &Card{}
+		if err := card.UnmarshalText([]byte(s)); err != nil {
+			return err
+		}
+		cards[i] = card
 	}
-	d.cards = m.Cards
-	d.discards = m.Discards
+	d.Cards = cards
 	return nil
+}
+
+// Dealer provides a way to generate new decks.
+type Dealer interface {
+	Deck() *Deck
+}
+
+// NewDealer returns a dealer that generates shuffled decks.
+func NewDealer() Dealer {
+	return dealer{}
+}
+
+type dealer struct{}
+
+func (d dealer) Deck() *Deck {
+	cards := shuffleCards(Cards())
+	return &Deck{Cards: cards}
 }
 
 func shuffleCards(cards []*Card) []*Card {

@@ -51,7 +51,7 @@ const (
 
 // IndexOf returns the index of the rank in the ascending order of ranks.
 // IndexOf returns -1 if the rank is not found.
-func (r Rank) IndexOf() int {
+func (r Rank) indexOf() int {
 	for i, rank := range allRanks() {
 		if r == rank {
 			return i
@@ -77,7 +77,7 @@ func (r Rank) pluralName() string {
 
 // Valid returns true if the rank is valid
 func (r Rank) valid() bool {
-	return r.IndexOf() != -1
+	return r.indexOf() != -1
 }
 
 func (r Rank) aceLowIndexOf() int {
@@ -97,7 +97,7 @@ func (a byAceHighRank) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 func (a byAceHighRank) Less(i, j int) bool {
 	iRank, jRank := a[i], a[j]
-	iIndex, jIndex := iRank.IndexOf(), jRank.IndexOf()
+	iIndex, jIndex := iRank.indexOf(), jRank.indexOf()
 	return iIndex < jIndex
 }
 
@@ -310,7 +310,7 @@ func (a byAceHigh) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 func (a byAceHigh) Less(i, j int) bool {
 	iCard, jCard := a[i], a[j]
-	iIndex, jIndex := iCard.Rank().IndexOf(), jCard.Rank().IndexOf()
+	iIndex, jIndex := iCard.Rank().indexOf(), jCard.Rank().indexOf()
 	return iIndex < jIndex
 }
 

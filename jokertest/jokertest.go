@@ -14,18 +14,26 @@ func Cards(list ...string) []*hand.Card {
 	return cards
 }
 
-// Deck returns a hand.Deck that will pop cards in the order of
-// the cards given.
-func Deck(cards []*hand.Card) hand.Deck {
+// Dealer returns a hand.Dealer that generates decks that will pop
+// cards in the order of the cards given.
+func Dealer(cards []*hand.Card) hand.Dealer {
+	return &deck{cards: cards}
+}
+
+type deck struct {
+	cards []*hand.Card
+}
+
+func (d deck) Deck() *hand.Deck {
+	// copy cards
+	cards := make([]*hand.Card, len(d.cards))
+	copy(cards, d.cards)
+
 	// reverse cards
 	for i, j := 0, len(cards)-1; i < j; i, j = i+1, j-1 {
 		cards[i], cards[j] = cards[j], cards[i]
 	}
-
-	return &deck{
-		cards: cards,
-		input: cards,
-	}
+	return &hand.Deck{Cards: cards}
 }
 
 func card(s string) *hand.Card {
@@ -48,60 +56,7 @@ func card(s string) *hand.Card {
 			return c
 		}
 	}
-
-	panic("card not found")
-}
-
-type deck struct {
-	input []*hand.Card
-	cards []*hand.Card
-}
-
-func (d *deck) Cards() []*hand.Card {
-	return append([]*hand.Card(nil), d.cards...)
-}
-
-func (d *deck) Discards() []*hand.Card {
-	return append([]*hand.Card(nil), d.cards...)
-}
-
-func (d *deck) Pop() *hand.Card {
-	last := len(d.cards) - 1
-	cards, card := d.cards[:last], d.cards[last]
-	d.cards = cards
-	return card
-}
-
-func (d *deck) PopMulti(n int) []*hand.Card {
-	cards := []*hand.Card{}
-	for i := 0; i < n; i++ {
-		cards = append(cards, d.Pop())
-	}
-	return cards
-}
-
-func (d *deck) Reset() {
-	d.cards = d.input
-}
-
-func (d *deck) Discard(cards ...*hand.Card) {
-	panic("not used")
-}
-
-func (d *deck) Len() int {
-	return len(d.cards)
-}
-
-func (d *deck) FromCards(cards, discards []*hand.Card) hand.Deck {
-	return Deck(cards)
-}
-
-func (d *deck) MarshalJSON() ([]byte, error) {
-	return []byte{}, nil
-}
-
-func (d *deck) UnmarshalJSON(data []byte) error {
-	return nil
+	panic("jokertest: card not found")
 }
 
 var (

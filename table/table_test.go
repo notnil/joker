@@ -10,7 +10,6 @@ import (
 
 func register() {
 	table.RegisterPlayer(Player("-", []PlayerAction{}))
-	table.RegisterDeck(hand.NewDeck())
 }
 
 type PlayerAction struct {
@@ -71,7 +70,7 @@ func TestToAndFronJSON(t *testing.T) {
 	register()
 
 	// create table
-	opts := table.Options{
+	opts := table.Config{
 		Game: table.Holdem,
 		Stakes: table.Stakes{
 			SmallBet: 1,
@@ -82,7 +81,7 @@ func TestToAndFronJSON(t *testing.T) {
 		Limit:      table.NoLimit,
 	}
 	p1 := Player("1", []PlayerAction{})
-	tbl := table.New(opts, hand.NewDeck())
+	tbl := table.New(opts, hand.NewDealer())
 	if err := tbl.Sit(p1, 0, 100); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +112,7 @@ func TestToAndFronJSON(t *testing.T) {
 func TestSeating(t *testing.T) {
 	t.Parallel()
 
-	opts := table.Options{
+	opts := table.Config{
 		Game: table.Holdem,
 		Stakes: table.Stakes{
 			SmallBet: 1,
@@ -127,7 +126,7 @@ func TestSeating(t *testing.T) {
 	p1Dup := Player("1", []PlayerAction{})
 	p2 := Player("2", []PlayerAction{})
 
-	tbl := table.New(opts, hand.NewDeck())
+	tbl := table.New(opts, hand.NewDealer())
 
 	// sit player 1
 	if err := tbl.Sit(p1, 0, 100); err != nil {
@@ -154,7 +153,7 @@ func TestSeating(t *testing.T) {
 func TestRaises(t *testing.T) {
 	t.Parallel()
 
-	opts := table.Options{
+	opts := table.Config{
 		Game: table.Holdem,
 		Stakes: table.Stakes{
 			SmallBet: 1,
@@ -169,7 +168,7 @@ func TestRaises(t *testing.T) {
 	p3 := Player("3", []PlayerAction{})
 	p4 := Player("4", []PlayerAction{})
 
-	tbl := table.New(opts, hand.NewDeck())
+	tbl := table.New(opts, hand.NewDealer())
 
 	if err := tbl.Sit(p1, 0, 50); err != nil {
 		t.Fatal(err)

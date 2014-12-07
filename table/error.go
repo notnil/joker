@@ -51,26 +51,9 @@ const (
 	InvalidAction
 )
 
-func (e ErrorType) String() string {
-	switch e {
-	case InvalidBuyIn:
-		return "Invalid Buy In"
-	case SeatOccupied:
-		return "Seat Occupied"
-	case InvalidSeat:
-		return "Invalid Seat"
-	case AlreadySeated:
-		return "Already Seated"
-	case InsufficientPlayers:
-		return "Insufficient Players"
-	case InvalidBet:
-		return "Invalid Bet"
-	case InvalidRaise:
-		return "Invalid Raise"
-	case InvalidAction:
-		return "Invalid Action"
-	}
-	return ""
+// MarshalText implements the encoding.TextMarshaler interface
+func (e ErrorType) MarshalText() (text []byte, err error) {
+	return []byte(e.String()), nil
 }
 
 // An Error contains an ErrorType and a error string.  It conforms to the error interface.
@@ -168,7 +151,7 @@ type errorJSON struct {
 // {"type":"Invalid Buy In","error":"table: 5 is an invalid buy in amount"}
 func (e *Error) MarshalJSON() (b []byte, err error) {
 	eJSON := &errorJSON{
-		Type:  e.errType.String(),
+		// Type:  e.errType.String(),
 		Error: e.Error(),
 	}
 	return json.Marshal(eJSON)

@@ -10,139 +10,6 @@ import (
 	"github.com/SyntropyDev/joker/hand"
 )
 
-// An Action is an action a player can take in a hand.
-type Action string
-
-const (
-	// Fold discards one's hand and forfeits interest in
-	// the current pot.
-	Fold Action = "Fold"
-
-	// Check is the forfeit to bet when not faced with a bet or
-	// raise.
-	Check Action = "Check"
-
-	// Call is a match of a bet or raise.
-	Call Action = "Call"
-
-	// Bet is a wager that others must match to remain a contender
-	// in the current pot.
-	Bet Action = "Bet"
-
-	// Raise is an increase to the original bet that others must
-	// match to remain a contender in the current pot.
-	Raise Action = "Raise"
-)
-
-// Player represents a player at a table.
-type Player interface {
-	// ID returns the unique identifier of the player.
-	ID() string
-
-	// FromID resets the player from an id.  It is required for
-	// deserialization.
-	FromID(id string) (Player, error)
-
-	// Action returns the action and it's chip amount.  This method
-	// will block table's Next() function until input is recieved.
-	Action() (a Action, chips int)
-}
-
-// RegisterPlayer stores the player implementation for json deserialization.
-func RegisterPlayer(p Player) {
-	registeredPlayer = p
-}
-
-// RegisterDeck stores the deck implementation for json deserialization.
-func RegisterDeck(d hand.Deck) {
-	registeredDeck = d
-}
-
-var (
-	// mapping to player implemenation
-	registeredPlayer Player
-
-	// mapping to deck implementation
-	registeredDeck hand.Deck
-)
-
-// Stakes are the forced bet amounts for the table.
-type Stakes struct {
-
-	// SmallBet is the smaller forced bet amount.
-	SmallBet int `json:"smallBet"`
-
-	// BigBet is the bigger forced bet amount.
-	BigBet int `json:"bigBet"`
-
-	// Ante is the amount requried from each player to start the hand.
-	Ante int `json:"ante"`
-}
-
-// Limit is the bet and raise limits of a poker game
-type Limit string
-
-const (
-	// NoLimit has no limit and players may go "all in"
-	NoLimit Limit = "NL"
-
-	// PotLimit has the current value of the pot as the limit
-	PotLimit Limit = "PL"
-
-	// FixedLimit restricted the size of bets and raises to predefined
-	// values based on the game and round.
-	FixedLimit = "FL"
-)
-
-// NumOfSeats is a configuration for how many seats are
-// available at the table.
-type NumOfSeats int
-
-const (
-	// TwoSeats forms a 2-handed table
-	TwoSeats NumOfSeats = iota + 2
-
-	// ThreeSeats forms a 3-handed table
-	ThreeSeats
-
-	// FourSeats forms a 4-handed table
-	FourSeats
-
-	// FiveSeats forms a 5-handed table
-	FiveSeats
-
-	// SixSeats forms a 6-handed table
-	SixSeats
-
-	// SevenSeats forms a 7-handed table
-	SevenSeats
-
-	// EightSeats forms a 8-handed table
-	EightSeats
-
-	// NineSeats forms a 9-handed table
-	NineSeats
-
-	// TenSeats forms a 10-handed table
-	TenSeats
-)
-
-// Options are the configurations for creating a table.
-type Options struct {
-
-	// Game is the game of the table.
-	Game Game `json:"game"`
-
-	// Limit is the limit of the table
-	Limit Limit `json:"limit"`
-
-	// Stakes is the stakes for the table.
-	Stakes Stakes `json:"stakes"`
-
-	// NumOfSeats is the number of seats available for the table.
-	NumOfSeats NumOfSeats `json:"numbOfSeats"`
-}
-
 // PlayerState is the state of a player at a table.
 type PlayerState struct {
 	player    Player
@@ -251,8 +118,9 @@ func (state *PlayerState) UnmarshalJSON(b []byte) error {
 // Table represent a poker table and dealer.  A table manages the
 // game state and all player interactions at the table.
 type Table struct {
-	opts        Options
-	deck        hand.Deck
+	opts        Config
+	dealer      hand.Dealer
+	deck        *hand.Deck
 	button      int
 	action      int
 	round       int
@@ -267,7 +135,7 @@ type Table struct {
 // start playing hands, at least two players must be seated and the
 // Next() function must be called.  If the number of seats is invalid
 // for the Game specified New panics.
-func New(opts Options, deck hand.Deck) *Table {
+func New(opts Config, dealer hand.Dealer) *Table {
 	if int(opts.NumOfSeats) > opts.Game.get().MaxSeats() {
 		format := "table: %s has a maximum of %d seats but attempted %d"
 		s := fmt.Sprintf(format, opts.Game, opts.Game.get().MaxSeats(), opts.NumOfSeats)
@@ -276,7 +144,8 @@ func New(opts Options, deck hand.Deck) *Table {
 
 	return &Table{
 		opts:    opts,
-		deck:    deck,
+		dealer:  dealer,
+		deck:    dealer.Deck(),
 		board:   []*hand.Card{},
 		players: map[int]*PlayerState{},
 		pot:     newPot(int(opts.NumOfSeats)),
@@ -426,7 +295,7 @@ func (t *Table) View(p Player) *Table {
 
 	return &Table{
 		opts:        t.opts,
-		deck:        hand.EmptyDeck(),
+		deck:        &hand.Deck{Cards: []*hand.Card{}},
 		button:      t.button,
 		action:      t.action,
 		round:       t.round,
@@ -583,9 +452,8 @@ func (t *Table) Stand(p Player) {
 }
 
 type tableJSON struct {
-	Options     Options                 `json:"options"`
-	Cards       []*hand.Card            `json:"cards"`
-	Discards    []*hand.Card            `json:"discards"`
+	Options     Config                  `json:"options"`
+	Deck        *hand.Deck              `json:"deck"`
 	Button      int                     `json:"button"`
 	Action      int                     `json:"action"`
 	Round       int                     `json:"round"`
@@ -605,8 +473,7 @@ func (t *Table) MarshalJSON() ([]byte, error) {
 
 	tJSON := &tableJSON{
 		Options:     t.opts,
-		Cards:       t.deck.Cards(),
-		Discards:    t.deck.Discards(),
+		Deck:        t.deck,
 		Button:      t.Button(),
 		Action:      t.Action(),
 		Round:       t.Round(),
@@ -621,10 +488,6 @@ func (t *Table) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (t *Table) UnmarshalJSON(b []byte) error {
-	if isNil(registeredDeck) {
-		return errors.New("table: Deck json deserialization requires use of the RegisterDeck function")
-	}
-
 	tJSON := &tableJSON{}
 	if err := json.Unmarshal(b, tJSON); err != nil {
 		return err
@@ -640,7 +503,8 @@ func (t *Table) UnmarshalJSON(b []byte) error {
 	}
 
 	t.opts = tJSON.Options
-	t.deck = registeredDeck.FromCards(tJSON.Cards, tJSON.Discards)
+	t.dealer = hand.NewDealer()
+	t.deck = tJSON.Deck
 	t.button = tJSON.Button
 	t.action = tJSON.Action
 	t.round = tJSON.Round
@@ -654,7 +518,7 @@ func (t *Table) UnmarshalJSON(b []byte) error {
 }
 
 func (t *Table) setUpHand() {
-	t.deck.Reset()
+	t.deck = t.dealer.Deck()
 	t.round = 0
 	t.button = t.nextSeat(t.button+1, false)
 	t.action = -1

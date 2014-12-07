@@ -11,7 +11,7 @@ func TestHoldem(t *testing.T) {
 	t.Parallel()
 
 	cards := jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh")
-	deck := jokertest.Deck(cards)
+	deck := jokertest.Dealer(cards).Deck()
 
 	h := Holdem.get()
 	holeCards := []*HoleCard{}
@@ -43,7 +43,7 @@ func TestOmahaHiLo(t *testing.T) {
 	t.Parallel()
 
 	cards := jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh")
-	deck := jokertest.Deck(cards)
+	deck := jokertest.Dealer(cards).Deck()
 
 	h := OmahaHiLo.get()
 	holeCards := []*HoleCard{}
@@ -80,7 +80,7 @@ func TestStudHiLo(t *testing.T) {
 	t.Parallel()
 
 	cards := jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh")
-	deck := jokertest.Deck(cards)
+	deck := jokertest.Dealer(cards).Deck()
 
 	h := StudHiLo.get()
 	holeCards := []*HoleCard{}
@@ -118,7 +118,7 @@ func TestBlinds(t *testing.T) {
 	t.Parallel()
 
 	h := Holdem.get()
-	opts := Options{
+	opts := Config{
 		Game: Holdem,
 		Stakes: Stakes{
 			SmallBet: 5,
@@ -165,7 +165,7 @@ func TestBringIn(t *testing.T) {
 	t.Parallel()
 
 	h := StudHi.get()
-	opts := Options{
+	opts := Config{
 		Game: Holdem,
 		Stakes: Stakes{
 			SmallBet: 5,
@@ -201,7 +201,7 @@ func BenchmarkOmahaHiLoShowdown(b *testing.B) {
 	pot.contribute(3, 130)
 
 	for i := 0; i < b.N; i++ {
-		deck := hand.NewDeck()
+		deck := hand.NewDealer().Deck()
 		board := deck.PopMulti(5)
 		holeCards := map[int][]*HoleCard{}
 		for i := 0; i < 4; i++ {

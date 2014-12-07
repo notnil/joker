@@ -58,24 +58,6 @@ const (
 	RoyalFlush
 )
 
-var rankingNames = map[Ranking]string{
-	HighCard:      "high card",
-	Pair:          "pair",
-	TwoPair:       "two pair",
-	ThreeOfAKind:  "three of a kind",
-	Straight:      "straight",
-	Flush:         "flush",
-	FullHouse:     "full house",
-	FourOfAKind:   "four of a kind",
-	StraightFlush: "straight flush",
-	RoyalFlush:    "royal flush",
-}
-
-// String returns the name of the ranking
-func (r Ranking) String() string {
-	return rankingNames[r]
-}
-
 // A Hand is the highest poker hand derived from five or more cards.
 type Hand struct {
 	ranking     Ranking
@@ -95,11 +77,14 @@ const (
 	SortingLow
 )
 
+// Ordering is used to order the output of the Sort function
 type Ordering int
 
 const (
+	// ASC is ascending order
 	ASC Ordering = iota + 1
 
+	// DESC is ascending order
 	DESC
 )
 
@@ -180,7 +165,7 @@ func (h *Hand) CompareTo(o *Hand) int {
 	oCards := o.Cards()
 	for i := 0; i < 5; i++ {
 		hCard, oCard := hCards[i], oCards[i]
-		hIndex, oIndex := hCard.Rank().IndexOf(), oCard.Rank().IndexOf()
+		hIndex, oIndex := hCard.Rank().indexOf(), oCard.Rank().indexOf()
 		if hIndex != oIndex {
 			return hIndex - oIndex
 		}
@@ -500,10 +485,10 @@ func hasStraight(cards []*Card) bool {
 	if hasBlankCards(cards) {
 		return false
 	}
-	lastIndex := cards[0].Rank().IndexOf()
+	lastIndex := cards[0].Rank().indexOf()
 	straight := true
 	for i := 1; i < 5; i++ {
-		index := cards[i].Rank().IndexOf()
+		index := cards[i].Rank().indexOf()
 		straight = straight && (lastIndex == index+1)
 		lastIndex = index
 	}

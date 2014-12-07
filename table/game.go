@@ -1,6 +1,8 @@
 package table
 
 import (
+	"errors"
+
 	"github.com/SyntropyDev/joker/hand"
 	"github.com/SyntropyDev/joker/util"
 )
@@ -43,78 +45,96 @@ const (
 	StudHiLo
 )
 
-// String returns the Game's name.
-func (g Game) String() string {
-	return g.get().String()
+// Games returns all Games.
+func Games() []Game {
+	return []Game{Holdem, OmahaHi, OmahaHiLo, Razz, StudHi, StudHiLo}
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (g Game) MarshalText() (text []byte, err error) {
+	return []byte(g.String()), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (g Game) UnmarshalText(text []byte) error {
+	s := string(text)
+	for _, gm := range Games() {
+		if gm.String() == s {
+			g = gm
+			return nil
+		}
+	}
+	return errors.New("table: game's unmarshaltext didn't find constant")
 }
 
 func (g Game) get() game {
 	switch g {
 	case Holdem:
-		return &holdemGame{
-			Name:    "Holdem",
-			Split:   false,
-			IsOmaha: false,
-		}
+		return holdem
 	case OmahaHi:
-		return &holdemGame{
-			Name:    "Omaha Hi",
-			Split:   false,
-			IsOmaha: true,
-		}
+		return omahaHi
 	case OmahaHiLo:
-		return &holdemGame{
-			Name:    "Omaha Hi/Lo",
-			Split:   true,
-			IsOmaha: true,
-		}
+		return omahaHiLo
 	case StudHi:
-		return &studGame{
-			Name:   "Stud Hi",
-			Split:  false,
-			IsRazz: false,
-		}
+		return studHi
 	case Razz:
-		return &studGame{
-			Name:   "Stud Hi",
-			Split:  false,
-			IsRazz: true,
-		}
+		return razz
 	case StudHiLo:
-		return &studGame{
-			Name:   "Stud Hi",
-			Split:  true,
-			IsRazz: false,
-		}
+		return studHiLo
 	}
 	panic("unreachable")
 }
 
+var (
+	holdem game = &holdemGame{
+		Split:   false,
+		IsOmaha: false,
+	}
+
+	omahaHi game = &holdemGame{
+		Split:   false,
+		IsOmaha: true,
+	}
+
+	omahaHiLo game = &holdemGame{
+		Split:   true,
+		IsOmaha: true,
+	}
+
+	studHi game = &studGame{
+		Split:  false,
+		IsRazz: false,
+	}
+
+	razz game = &studGame{
+		Split:  false,
+		IsRazz: true,
+	}
+
+	studHiLo game = &studGame{
+		Split:  true,
+		IsRazz: false,
+	}
+)
+
 type holeCards map[int][]*HoleCard
 
 type game interface {
-	String() string
 	NumOfRounds() int
 	MaxSeats() int
-	HoleCards(deck hand.Deck, r round) []*HoleCard
-	BoardCards(deck hand.Deck, r round) []*hand.Card
+	HoleCards(deck *hand.Deck, r round) []*HoleCard
+	BoardCards(deck *hand.Deck, r round) []*hand.Card
 	SplitPot() bool
 	Sorting() hand.Sorting
-	FormHighHand(holeCards []*hand.Card, boardCards []*hand.Card) *hand.Hand
-	FormLowHand(holeCards []*hand.Card, boardCards []*hand.Card) *hand.Hand
-	ForcedBet(holeCards holeCards, opts Options, r round, seat, relativePos int) int
+	FormHands(holeCards []*hand.Card, boardCards []*hand.Card) map[hand.Sorting]*hand.Hand
+	ForcedBet(holeCards holeCards, opts Config, r round, seat, relativePos int) int
 	RoundStartSeat(holeCards holeCards, r round) int
-	FixedLimit(opts Options, r round) int
+	FixedLimit(opts Config, r round) int
 }
 
 type holdemGame struct {
-	Name    string
 	Split   bool
 	IsOmaha bool
-}
-
-func (g *holdemGame) String() string {
-	return g.Name
 }
 
 func (g *holdemGame) NumOfRounds() int {
@@ -125,7 +145,7 @@ func (g *holdemGame) MaxSeats() int {
 	return 10
 }
 
-func (g *holdemGame) HoleCards(deck hand.Deck, r round) []*HoleCard {
+func (g *holdemGame) HoleCards(deck *hand.Deck, r round) []*HoleCard {
 	numOfCards := 2
 	if g.IsOmaha {
 		numOfCards = 4
@@ -137,7 +157,7 @@ func (g *holdemGame) HoleCards(deck hand.Deck, r round) []*HoleCard {
 	return []*HoleCard{}
 }
 
-func (g *holdemGame) BoardCards(deck hand.Deck, r round) []*hand.Card {
+func (g *holdemGame) BoardCards(deck *hand.Deck, r round) []*hand.Card {
 	switch r {
 	case flop:
 		return deck.PopMulti(3)
@@ -178,7 +198,7 @@ func (g *holdemGame) FormLowHand(holeCards []*hand.Card, board []*hand.Card) *ha
 	return nil
 }
 
-func (g *holdemGame) ForcedBet(holeCards holeCards, opts Options, r round, seat, relativePos int) int {
+func (g *holdemGame) ForcedBet(holeCards holeCards, opts Config, r round, seat, relativePos int) int {
 	chips := 0
 	if r != preflop {
 		return chips
@@ -225,7 +245,7 @@ func (g *holdemGame) RoundStartSeat(holeCards holeCards, r round) int {
 	return 3
 }
 
-func (g *holdemGame) FixedLimit(opts Options, r round) int {
+func (g *holdemGame) FixedLimit(opts Config, r round) int {
 	switch r {
 	case turn, river:
 		return opts.Stakes.BigBet
@@ -234,13 +254,8 @@ func (g *holdemGame) FixedLimit(opts Options, r round) int {
 }
 
 type studGame struct {
-	Name   string
 	Split  bool
 	IsRazz bool
-}
-
-func (g *studGame) String() string {
-	return g.Name
 }
 
 func (g *studGame) NumOfRounds() int {
@@ -251,7 +266,7 @@ func (g *studGame) MaxSeats() int {
 	return 8
 }
 
-func (g *studGame) HoleCards(deck hand.Deck, r round) []*HoleCard {
+func (g *studGame) HoleCards(deck *hand.Deck, r round) []*HoleCard {
 	switch r {
 	case thirdSt:
 		cards := holeCardsPopMulti(deck, Concealed, 2)
@@ -270,7 +285,7 @@ func (g *studGame) HoleCards(deck hand.Deck, r round) []*HoleCard {
 }
 
 // TODO: take into account running out of cards
-func (g *studGame) BoardCards(deck hand.Deck, r round) []*hand.Card {
+func (g *studGame) BoardCards(deck *hand.Deck, r round) []*hand.Card {
 	return []*hand.Card{}
 }
 
@@ -302,7 +317,7 @@ func (g *studGame) FormLowHand(holeCards []*hand.Card, board []*hand.Card) *hand
 	return nil
 }
 
-func (g *studGame) ForcedBet(holeCards holeCards, opts Options, r round, seat, relativePos int) int {
+func (g *studGame) ForcedBet(holeCards holeCards, opts Config, r round, seat, relativePos int) int {
 	chips := 0
 	if r != thirdSt {
 		return chips
@@ -323,12 +338,12 @@ func (g *studGame) RoundStartSeat(holeCards holeCards, r round) int {
 		return hand.New(holeCards)
 	}
 
-	wt := winLow
+	sorting := hand.SortingLow
 	if (r != thirdSt && !g.IsRazz) || (r == thirdSt && g.IsRazz) {
-		wt = winHigh
+		sorting = hand.SortingHigh
 	}
 	hands := newHands(exposed, []*hand.Card{}, f)
-	hands = hands.WinningHands(wt)
+	hands = hands.WinningHands(sorting)
 
 	for seat := range hands {
 		return seat
@@ -336,7 +351,7 @@ func (g *studGame) RoundStartSeat(holeCards holeCards, r round) int {
 	panic("unreachable")
 }
 
-func (g *studGame) FixedLimit(opts Options, r round) int {
+func (g *studGame) FixedLimit(opts Config, r round) int {
 	switch r {
 	case thirdSt, fourthSt:
 		return opts.Stakes.SmallBet
@@ -371,14 +386,6 @@ func exposedCards(holeCards map[int][]*HoleCard) map[int][]*HoleCard {
 	return exposed
 }
 
-type winType int
-
-const (
-	winHigh winType = iota + 1
-	winLow
-	winHighLow
-)
-
 type round int
 
 const (
@@ -392,22 +399,6 @@ const (
 	fifthSt   round = 2
 	sixthSt   round = 3
 	seventhSt round = 4
-)
-
-func holdemRounds() []round {
-	return []round{preflop, flop, turn, river}
-}
-
-func studRounds() []round {
-	return []round{thirdSt, fourthSt, fifthSt, sixthSt, seventhSt}
-}
-
-const (
-	holdemNumOfRounds = 4
-	holdemMaxSeats    = 10
-
-	studNumOfRounds = 5
-	studMaxSeats    = 8
 )
 
 var (
