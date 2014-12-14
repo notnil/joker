@@ -7,7 +7,49 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/SyntropyDev/joker/hand"
+	"github.com/loganjspears/joker/hand"
+	"github.com/loganjspears/joker/pot"
+)
+
+var (
+	// ErrInvalidBuyin errors occur when a player attempts to sit at a
+	// table with an invalid buyin.
+	ErrInvalidBuyin = errors.New("table: player attempted sitting with invalid buyin")
+
+	// ErrSeatOccupied errors occur when a player attempts to sit at a
+	// table in a seat that is already occupied.
+	ErrSeatOccupied = errors.New("table: player attempted sitting in occupied seat")
+
+	// ErrInvalidSeat errors occur when a player attempts to sit at a
+	// table in a seat that is invalid.
+	ErrInvalidSeat = errors.New("table: player attempted sitting in invalid seat")
+
+	// ErrAlreadySeated errors occur when a player attempts to sit at a
+	// table at which the player is already seated.
+	ErrAlreadySeated = errors.New("table: player attempted sitting when already seated")
+
+	// ErrInsufficientPlayers errors occur when the table's Next() method
+	// can't start a new hand because of insufficient players
+	ErrInsufficientPlayers = errors.New("table: insufficent players for call to table's Next() method")
+
+	// ErrInvalidBet errors occur when a player attempts to bet an invalid
+	// amount.  Bets are invalid if they exceed a player's chips or fall below the
+	// stakes minimum bet.  In fixed limit games the bet amount must equal the amount
+	// prespecified by the limit and round.  In pot limit games the bet must be less
+	// than or equal to the pot.
+	ErrInvalidBet = errors.New("table: player attempted invalid bet")
+
+	// ErrInvalidRaise errors occur when a player attempts to raise an invalid
+	// amount.  Raises are invalid if the raise or reraise is lower than the previous bet
+	// or raised amount unless it puts the player allin.  Raises are also invalid if they
+	// exceed a player's chips. In fixed limit games the raise amount must equal the amount
+	// prespecified by the limit and round.  In pot limit games the raise must be less
+	// than or equal to the pot.
+	ErrInvalidRaise = errors.New("table: player attempted invalid raise")
+
+	// ErrInvalidAction errors occur when a player attempts an action that isn't
+	// currently allowed.  For example a check action is invalid when faced with a raise.
+	ErrInvalidAction = errors.New("table: player attempted invalid action")
 )
 
 // PlayerState is the state of a player at a table.
@@ -127,7 +169,7 @@ type Table struct {
 	minRaise    int
 	board       []*hand.Card
 	players     map[int]*PlayerState
-	pot         *Pot
+	pot         *pot.Pot
 	startedHand bool
 }
 
@@ -148,7 +190,7 @@ func New(opts Config, dealer hand.Dealer) *Table {
 		deck:    dealer.Deck(),
 		board:   []*hand.Card{},
 		players: map[int]*PlayerState{},
-		pot:     newPot(int(opts.NumOfSeats)),
+		pot:     pot.New(int(opts.NumOfSeats)),
 		action:  -1,
 	}
 }
@@ -259,7 +301,7 @@ func (t *Table) Outstanding() int {
 	if player.AllIn() || player.Out() {
 		return 0
 	}
-	return t.pot.outstanding(t.Action())
+	return t.pot.Outstanding(t.Action())
 }
 
 // Players returns a mapping of seats to player states.  Empty seats
@@ -308,7 +350,7 @@ func (t *Table) View(p Player) *Table {
 }
 
 // Pot returns the current pot.
-func (t *Table) Pot() *Pot {
+func (t *Table) Pot() *pot.Pot {
 	return t.pot
 }
 
@@ -362,10 +404,10 @@ func (t *Table) ValidActions() []Action {
 // nil. err is nil unless there are insufficient players to start
 // the next hand or a player's action has an error. done indicates
 // that the table can not continue.
-func (t *Table) Next() (results map[int][]*PotResult, done bool, err error) {
+func (t *Table) Next() (results map[int][]*pot.Result, done bool, err error) {
 	if !t.startedHand {
 		if !t.hasNextHand() {
-			return nil, true, NewInsufficientPlayers()
+			return nil, true, ErrInsufficientPlayers
 		}
 		t.setUpHand()
 		t.setUpRound()
@@ -377,9 +419,10 @@ func (t *Table) Next() (results map[int][]*PotResult, done bool, err error) {
 		t.round++
 
 		if t.round == t.game().NumOfRounds() {
-			highHands := newHands(t.holeCards(), t.board, t.game().FormHighHand)
-			lowHands := newHands(t.holeCards(), t.board, t.game().FormLowHand)
-			results = t.pot.payout(highHands, lowHands, t.game().Sorting(), t.game().SplitPot(), t.button)
+			holeCards := cardsFromHoleCardMap(t.holeCards())
+			highHands := pot.NewHands(holeCards, t.board, t.game().FormHighHand)
+			lowHands := pot.NewHands(holeCards, t.board, t.game().FormLowHand)
+			results = t.pot.Payout(highHands, lowHands, t.game().Sorting(), t.button)
 			t.payoutResults(results)
 			t.startedHand = false
 			return results, false, nil
@@ -402,7 +445,7 @@ func (t *Table) Next() (results map[int][]*PotResult, done bool, err error) {
 			if player.out {
 				continue
 			}
-			results = t.pot.take(seat)
+			results = t.pot.Take(seat)
 			t.payoutResults(results)
 			t.startedHand = false
 			return results, false, nil
@@ -419,17 +462,17 @@ func (t *Table) Next() (results map[int][]*PotResult, done bool, err error) {
 // the valid buy in amounts.
 func (t *Table) Sit(p Player, seat, chips int) error {
 	if !t.validSeat(seat) {
-		return NewInvalidSeat(seat)
+		return ErrInvalidSeat
 	} else if t.isSeated(p) {
-		return NewAlreadySeated(p.ID())
+		return ErrAlreadySeated
 	} else if _, occupied := t.players[seat]; occupied {
-		return NewSeatOccupied(seat)
+		return ErrSeatOccupied
 	}
 
 	min := (t.opts.Stakes.SmallBet * 50)
 	max := (t.opts.Stakes.SmallBet * 200)
 	if chips < min || chips > max {
-		return NewInvalidBuyIn(chips)
+		return ErrInvalidBuyin
 	}
 
 	t.players[seat] = &PlayerState{
@@ -460,7 +503,7 @@ type tableJSON struct {
 	MinRaise    int                     `json:"minRaise"`
 	Board       []*hand.Card            `json:"board"`
 	Players     map[string]*PlayerState `json:"players"`
-	Pot         *Pot                    `json:"pot"`
+	Pot         *pot.Pot                `json:"pot"`
 	StartedHand bool                    `json:"startedHand"`
 }
 
@@ -522,7 +565,7 @@ func (t *Table) setUpHand() {
 	t.round = 0
 	t.button = t.nextSeat(t.button+1, false)
 	t.action = -1
-	t.pot = newPot(t.NumOfSeats())
+	t.pot = pot.New(t.NumOfSeats())
 
 	// reset cards
 	t.board = []*hand.Card{}
@@ -571,7 +614,7 @@ func (t *Table) setUpRound() {
 	}
 }
 
-func (t *Table) payoutResults(resultsMap map[int][]*PotResult) {
+func (t *Table) payoutResults(resultsMap map[int][]*pot.Result) {
 	for seat, results := range resultsMap {
 		for _, result := range results {
 			amount := t.players[seat].chips + result.Chips
@@ -589,16 +632,16 @@ func (t *Table) handleAction(seat int, p *PlayerState, a Action, chips int) erro
 		validAction = validAction || va == a
 	}
 	if !validAction {
-		return NewInvalidAction(a, t.ValidActions())
+		return ErrInvalidAction
 	}
 
 	// check if bet or raise amount is invalid
 	if (a == Bet || a == Raise) && (chips < t.MinRaise() || chips > t.MaxRaise()) {
 		switch a {
 		case Bet:
-			return NewInvalidBet(chips, t.MinRaise(), t.MaxRaise())
+			return ErrInvalidBet
 		case Raise:
-			return NewInvalidRaise(chips, t.MinRaise(), t.MaxRaise())
+			return ErrInvalidRaise
 		}
 	}
 
@@ -635,7 +678,7 @@ func (t *Table) addToPot(seat, chips int) {
 		p.allin = true
 	}
 	p.chips -= chips
-	t.pot.contribute(seat, chips)
+	t.pot.Contribute(seat, chips)
 }
 
 func (t *Table) nextSeat(seat int, playing bool) int {

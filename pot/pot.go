@@ -1,10 +1,12 @@
 package pot
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 
-	"github.com/SyntropyDev/joker/hand"
+	"github.com/loganjspears/joker/hand"
 )
 
 // Results is a scam
@@ -97,7 +99,7 @@ func (p *Pot) Take(seat int) Results {
 
 // Payout takes the high and low hands to produce pot results.
 // Sorting determines how a non-split pot winning hands are sorted.
-func (p *Pot) Payout(highHands, lowHands map[int]*hand.Hand, sorting hand.Sorting, button int) Results {
+func (p *Pot) Payout(highHands, lowHands Hands, sorting hand.Sorting, button int) Results {
 	sidePots := p.sidePots()
 	if len(sidePots) > 1 {
 		results := map[int][]*Result{}
@@ -108,12 +110,12 @@ func (p *Pot) Payout(highHands, lowHands map[int]*hand.Hand, sorting hand.Sortin
 		return results
 	}
 
-	sideHighHands := hands(highHands).handsForSeats(p.seats())
-	sideLowHands := hands(lowHands).handsForSeats(p.seats())
+	sideHighHands := highHands.handsForSeats(p.seats())
+	sideLowHands := lowHands.handsForSeats(p.seats())
 
 	split := len(sideLowHands) > 0
 	if !split {
-		winners := sideHighHands.winningHands(sorting)
+		winners := sideHighHands.WinningHands(sorting)
 		switch sorting {
 		case hand.SortingHigh:
 			return p.resultsFromWinners(winners, p.Chips(), button, highPotShare)
@@ -122,8 +124,8 @@ func (p *Pot) Payout(highHands, lowHands map[int]*hand.Hand, sorting hand.Sortin
 		}
 	}
 
-	highWinners := sideHighHands.winningHands(hand.SortingHigh)
-	lowWinners := sideLowHands.winningHands(hand.SortingLow)
+	highWinners := sideHighHands.WinningHands(hand.SortingHigh)
+	lowWinners := sideLowHands.WinningHands(hand.SortingLow)
 
 	if len(lowWinners) == 0 {
 		return p.resultsFromWinners(highWinners, p.Chips(), button, highPotShare)
@@ -142,8 +144,48 @@ func (p *Pot) Payout(highHands, lowHands map[int]*hand.Hand, sorting hand.Sortin
 	return combineResults(highResults, lowResults)
 }
 
+type potJSON struct {
+	Contributions map[string]int
+	Chips         int
+}
+
+// MarshalJSON conforms to the json.Marshaler interface
+func (p *Pot) MarshalJSON() ([]byte, error) {
+	m := map[string]int{}
+	for seat, chips := range p.contributions {
+		seatStr := strconv.FormatInt(int64(seat), 10)
+		m[seatStr] = chips
+	}
+
+	j := &potJSON{
+		Contributions: m,
+		Chips:         p.Chips(),
+	}
+	return json.Marshal(j)
+}
+
+// UnmarshalJSON conforms to the json.Marshaler interface
+func (p *Pot) UnmarshalJSON(b []byte) error {
+	j := &potJSON{}
+	if err := json.Unmarshal(b, j); err != nil {
+		return err
+	}
+
+	m := map[int]int{}
+	for seatStr, chips := range j.Contributions {
+		seat, err := strconv.ParseInt(seatStr, 10, 64)
+		if err != nil {
+			return err
+		}
+		m[int(seat)] = chips
+	}
+
+	p.contributions = m
+	return nil
+}
+
 // resultsFromWinners forms results for winners of the pot
-func (p *Pot) resultsFromWinners(winners hands, chips, button int, f func(n int) Share) map[int][]*Result {
+func (p *Pot) resultsFromWinners(winners Hands, chips, button int, f func(n int) Share) map[int][]*Result {
 	results := map[int][]*Result{}
 	winningSeats := []int{}
 	for seat, hand := range winners {
@@ -154,17 +196,16 @@ func (p *Pot) resultsFromWinners(winners hands, chips, button int, f func(n int)
 			Share: f(len(winners)),
 		}}
 	}
+	sort.IntSlice(winningSeats).Sort()
 
 	remainder := chips % len(winners)
-	seats := sort.IntSlice(p.seats())
-	seats.Sort()
-	numOfSeats := seats[len(seats)-1]
-
 	for i := 0; i < remainder; i++ {
-		seat := button + i%numOfSeats
-		for {
-			results[seat][0].Chips++
-			seat++
+		seatToCheck := (button + i) % 10
+		for _, seat := range winningSeats {
+			if seat == seatToCheck {
+				results[seat][0].Chips++
+				break
+			}
 		}
 	}
 	return results

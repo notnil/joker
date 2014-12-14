@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	. "github.com/SyntropyDev/joker/hand"
-	"github.com/SyntropyDev/joker/jokertest"
+	. "github.com/loganjspears/joker/hand"
+	"github.com/loganjspears/joker/jokertest"
 )
 
 type testPair struct {

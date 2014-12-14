@@ -3,114 +3,70 @@ package table
 import (
 	"testing"
 
-	"github.com/SyntropyDev/joker/hand"
-	"github.com/SyntropyDev/joker/jokertest"
+	"github.com/loganjspears/joker/hand"
+	"github.com/loganjspears/joker/jokertest"
+	"github.com/loganjspears/joker/pot"
 )
 
-func TestHoldem(t *testing.T) {
-	t.Parallel()
-
-	cards := jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh")
-	deck := jokertest.Dealer(cards).Deck()
-
-	h := Holdem.get()
-	holeCards := []*HoleCard{}
-	for _, r := range holdemRounds() {
-		holeCards = append(holeCards, h.HoleCards(deck, r)...)
-	}
-	if len(holeCards) != 2 {
-		t.Fatal("should deal two hole cards")
-	}
-	boardCards := []*hand.Card{}
-	for _, r := range holdemRounds() {
-		boardCards = append(boardCards, h.BoardCards(deck, r)...)
-	}
-	if len(boardCards) != 5 {
-		t.Fatal("should deal five board cards")
-	}
-	plainHoleCards := []*hand.Card{}
-	for _, c := range holeCards {
-		plainHoleCards = append(plainHoleCards, c.Card)
-	}
-
-	_hand := h.FormHighHand(plainHoleCards, boardCards)
-	if _hand.Ranking() != hand.Pair {
-		t.Fatal(_hand)
-	}
+var tests = []struct {
+	G              Game
+	Cards          []*hand.Card
+	NumOfHoleCards int
+	NumOfBoard     int
+	HighRanking    hand.Ranking
+	LowRanking     hand.Ranking
+}{
+	{
+		G:              Holdem,
+		Cards:          jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh"),
+		NumOfHoleCards: 2,
+		NumOfBoard:     5,
+		HighRanking:    hand.Pair,
+	},
+	{
+		G:              OmahaHiLo,
+		Cards:          jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh"),
+		NumOfHoleCards: 4,
+		NumOfBoard:     5,
+		HighRanking:    hand.TwoPair,
+		LowRanking:     hand.HighCard,
+	},
+	{
+		G:              StudHiLo,
+		Cards:          jokertest.Cards("Ah", "Ks", "4s", "3d", "5s", "8h", "2c"),
+		NumOfHoleCards: 7,
+		NumOfBoard:     0,
+		HighRanking:    hand.Straight,
+		LowRanking:     hand.HighCard,
+	},
 }
 
-func TestOmahaHiLo(t *testing.T) {
+func TestDealingAndEvalutions(t *testing.T) {
 	t.Parallel()
+	for _, s := range tests {
+		g := s.G.get()
+		hCards, board := dealOut(g, s.Cards)
 
-	cards := jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh")
-	deck := jokertest.Dealer(cards).Deck()
+		if len(hCards) != s.NumOfHoleCards {
+			t.Errorf("%v's number of hole cards = %d; want %d", s.G, len(hCards), s.NumOfHoleCards)
+		}
+		if len(board) != s.NumOfBoard {
+			t.Errorf("%v's number of board cards = %d; want %d", s.G, len(board), s.NumOfBoard)
+		}
 
-	h := OmahaHiLo.get()
-	holeCards := []*HoleCard{}
-	for _, r := range holdemRounds() {
-		holeCards = append(holeCards, h.HoleCards(deck, r)...)
-	}
-	if len(holeCards) != 4 {
-		t.Fatal("should deal four hole cards")
-	}
-	boardCards := []*hand.Card{}
-	for _, r := range holdemRounds() {
-		boardCards = append(boardCards, h.BoardCards(deck, r)...)
-	}
-	if len(boardCards) != 5 {
-		t.Fatal("should deal five board cards")
-	}
-	plainHoleCards := []*hand.Card{}
-	for _, c := range holeCards {
-		plainHoleCards = append(plainHoleCards, c.Card)
-	}
+		equalRanking := func(h *hand.Hand, r hand.Ranking) bool {
+			return (h == nil && r == hand.Ranking(0)) || (h.Ranking() == r)
+		}
 
-	highHand := h.FormHighHand(plainHoleCards, boardCards)
-	if highHand.Ranking() != hand.TwoPair {
-		t.Fatal("should find a two pair")
-	}
+		highHand := g.FormHighHand(hCards, board)
+		if !equalRanking(highHand, s.HighRanking) {
+			t.Errorf("%v's high hand formation = %v; want %v", s.G, highHand.Ranking(), s.HighRanking)
+		}
 
-	lowHand := h.FormLowHand(plainHoleCards, boardCards)
-	if lowHand == nil {
-		t.Fatal("should find low")
-	}
-}
-
-func TestStudHiLo(t *testing.T) {
-	t.Parallel()
-
-	cards := jokertest.Cards("Qh", "Ks", "4s", "3d", "4s", "8h", "2c", "Ah", "Kh")
-	deck := jokertest.Dealer(cards).Deck()
-
-	h := StudHiLo.get()
-	holeCards := []*HoleCard{}
-	for _, r := range studRounds() {
-		holeCards = append(holeCards, h.HoleCards(deck, r)...)
-	}
-	if len(holeCards) != 7 {
-		t.Fatal("should deal seven hole cards")
-	}
-	boardCards := []*hand.Card{}
-	for _, r := range studRounds() {
-		boardCards = append(boardCards, h.BoardCards(deck, r)...)
-	}
-	if len(boardCards) != 0 {
-		t.Fatal("should deal zero board cards")
-	}
-	plainHoleCards := []*hand.Card{}
-	for _, c := range holeCards {
-		plainHoleCards = append(plainHoleCards, c.Card)
-	}
-
-	highHand := h.FormHighHand(plainHoleCards, boardCards)
-
-	if highHand.Ranking() != hand.Pair {
-		t.Fatal("should find a pair")
-	}
-
-	lowHand := h.FormLowHand(plainHoleCards, boardCards)
-	if lowHand != nil {
-		t.Fatal("should not find low")
+		lowHand := g.FormLowHand(hCards, board)
+		if !equalRanking(lowHand, s.LowRanking) {
+			t.Errorf("%v's low hand formation = %v; want %v", s.G, lowHand.Ranking(), s.LowRanking)
+		}
 	}
 }
 
@@ -147,7 +103,6 @@ func TestBlinds(t *testing.T) {
 	}
 
 	// 2 person blinds
-
 	holeCards = map[int][]*HoleCard{
 		0: []*HoleCard{},
 		1: []*HoleCard{},
@@ -193,12 +148,36 @@ func TestBringIn(t *testing.T) {
 	}
 }
 
+func BenchmarkHoldemShowdown(b *testing.B) {
+	p := pot.New(4)
+	p.Contribute(0, 100)
+	p.Contribute(1, 110)
+	p.Contribute(2, 120)
+	p.Contribute(3, 130)
+
+	for i := 0; i < b.N; i++ {
+		deck := hand.NewDealer().Deck()
+		board := deck.PopMulti(5)
+		holeCards := map[int][]*HoleCard{}
+		for i := 0; i < 4; i++ {
+			holeCards[i] = []*HoleCard{
+				newHoleCard(deck.Pop(), Concealed),
+				newHoleCard(deck.Pop(), Concealed),
+			}
+		}
+		hCards := cardsFromHoleCardMap(holeCards)
+		highHands := pot.NewHands(hCards, board, Holdem.get().FormHighHand)
+		lowHands := pot.NewHands(hCards, board, Holdem.get().FormLowHand)
+		p.Payout(highHands, lowHands, hand.SortingHigh, 0)
+	}
+}
+
 func BenchmarkOmahaHiLoShowdown(b *testing.B) {
-	pot := newPot(4)
-	pot.contribute(0, 100)
-	pot.contribute(1, 110)
-	pot.contribute(2, 120)
-	pot.contribute(3, 130)
+	p := pot.New(4)
+	p.Contribute(0, 100)
+	p.Contribute(1, 110)
+	p.Contribute(2, 120)
+	p.Contribute(3, 130)
 
 	for i := 0; i < b.N; i++ {
 		deck := hand.NewDealer().Deck()
@@ -212,8 +191,26 @@ func BenchmarkOmahaHiLoShowdown(b *testing.B) {
 				newHoleCard(deck.Pop(), Concealed),
 			}
 		}
-		highHands := newHands(holeCards, board, OmahaHiLo.get().FormHighHand)
-		lowHands := newHands(holeCards, board, OmahaHiLo.get().FormLowHand)
-		pot.payout(highHands, lowHands, hand.SortingHigh, true, 0)
+		hCards := cardsFromHoleCardMap(holeCards)
+		highHands := pot.NewHands(hCards, board, OmahaHiLo.get().FormHighHand)
+		lowHands := pot.NewHands(hCards, board, OmahaHiLo.get().FormLowHand)
+		p.Payout(highHands, lowHands, hand.SortingHigh, 0)
 	}
+}
+
+func dealOut(g game, cards []*hand.Card) (holeCards []*hand.Card, board []*hand.Card) {
+	deck := jokertest.Dealer(cards).Deck()
+	hCards := []*HoleCard{}
+	board = []*hand.Card{}
+
+	for i := 0; i < g.NumOfRounds(); i++ {
+		hCards = append(hCards, g.HoleCards(deck, round(i))...)
+		board = append(board, g.BoardCards(deck, round(i))...)
+	}
+
+	holeCards = []*hand.Card{}
+	for _, c := range hCards {
+		holeCards = append(holeCards, c.Card)
+	}
+	return
 }

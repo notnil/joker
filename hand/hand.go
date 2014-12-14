@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/SyntropyDev/joker/util"
+	"github.com/loganjspears/joker/util"
 )
 
 // A Ranking is one of the ten possible hand rankings that determine the
@@ -17,7 +17,7 @@ type Ranking int
 const (
 	// HighCard represents a hand composed of no pairs, straights, or flushes.
 	// Ex: A♠ K♠ J♣ 7♥ 5♦
-	HighCard Ranking = iota
+	HighCard Ranking = iota + 1
 
 	// Pair represents a hand composed of a single pair.
 	// Ex: A♠ A♣ K♣ J♥ 5♦
@@ -57,13 +57,6 @@ const (
 	// Ex: A♥ K♥ Q♥ J♥ T♥
 	RoyalFlush
 )
-
-// A Hand is the highest poker hand derived from five or more cards.
-type Hand struct {
-	ranking     Ranking
-	cards       []*Card
-	description string
-}
 
 // Sorting is the sorting used to determine which hand is
 // selected.
@@ -109,6 +102,13 @@ func AceToFiveLow(c *Config) {
 	c.aceIsLow = true
 	c.ignoreStraights = true
 	c.ignoreFlushes = true
+}
+
+// A Hand is the highest poker hand derived from five or more cards.
+type Hand struct {
+	ranking     Ranking
+	cards       []*Card
+	description string
 }
 
 // New forms a hand from the given cards and configuration

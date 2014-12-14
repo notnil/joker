@@ -20,20 +20,3 @@ func (i Game) String() string {
 	}
 	return _Game_name[lo:hi]
 }
-
-const _ErrorType_name = "InvalidBuyInSeatOccupiedInvalidSeatAlreadySeatedInsufficientPlayersInvalidBetInvalidRaiseInvalidAction"
-
-var _ErrorType_index = [...]uint8{12, 24, 35, 48, 67, 77, 89, 102}
-
-func (i ErrorType) String() string {
-	i -= 1
-	if i < 0 || i >= ErrorType(len(_ErrorType_index)) {
-		return fmt.Sprintf("ErrorType(%d)", i+1)
-	}
-	hi := _ErrorType_index[i]
-	lo := uint8(0)
-	if i > 0 {
-		lo = _ErrorType_index[i-1]
-	}
-	return _ErrorType_name[lo:hi]
-}

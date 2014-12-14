@@ -1,6 +1,6 @@
 package jokertest
 
-import "github.com/SyntropyDev/joker/hand"
+import "github.com/loganjspears/joker/hand"
 
 // Cards takes a list of strings that have the format "4s", "Tc",
 // "Ah" instead of the hand.Card String() format "4♠", "T♣", "A♥"

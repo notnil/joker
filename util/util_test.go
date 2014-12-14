@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/SyntropyDev/joker/util"
+	"github.com/loganjspears/joker/util"
 )
 
 type combo struct {

@@ -3,8 +3,9 @@ package table
 import (
 	"errors"
 
-	"github.com/SyntropyDev/joker/hand"
-	"github.com/SyntropyDev/joker/util"
+	"github.com/loganjspears/joker/hand"
+	"github.com/loganjspears/joker/pot"
+	"github.com/loganjspears/joker/util"
 )
 
 // A Game represents one of the different poker variations.
@@ -126,7 +127,8 @@ type game interface {
 	BoardCards(deck *hand.Deck, r round) []*hand.Card
 	SplitPot() bool
 	Sorting() hand.Sorting
-	FormHands(holeCards []*hand.Card, boardCards []*hand.Card) map[hand.Sorting]*hand.Hand
+	FormHighHand(holeCards []*hand.Card, boardCards []*hand.Card) *hand.Hand
+	FormLowHand(holeCards []*hand.Card, boardCards []*hand.Card) *hand.Hand
 	ForcedBet(holeCards holeCards, opts Config, r round, seat, relativePos int) int
 	RoundStartSeat(holeCards holeCards, r round) int
 	FixedLimit(opts Config, r round) int
@@ -190,6 +192,10 @@ func (g *holdemGame) FormHighHand(holeCards []*hand.Card, board []*hand.Card) *h
 }
 
 func (g *holdemGame) FormLowHand(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+	if !g.IsOmaha {
+		return nil
+	}
+
 	hands := omahaHands(holeCards, board, hand.AceToFiveLow)
 	hands = hand.Sort(hand.SortingLow, hand.DESC, hands...)
 	if hands[0].CompareTo(eightOrBetter) <= 0 {
@@ -342,7 +348,7 @@ func (g *studGame) RoundStartSeat(holeCards holeCards, r round) int {
 	if (r != thirdSt && !g.IsRazz) || (r == thirdSt && g.IsRazz) {
 		sorting = hand.SortingHigh
 	}
-	hands := newHands(exposed, []*hand.Card{}, f)
+	hands := pot.NewHands(exposed, []*hand.Card{}, f)
 	hands = hands.WinningHands(sorting)
 
 	for seat := range hands {
@@ -361,10 +367,10 @@ func (g *studGame) FixedLimit(opts Config, r round) int {
 
 func omahaHands(holeCards []*hand.Card, board []*hand.Card, opts func(*hand.Config)) []*hand.Hand {
 	hands := []*hand.Hand{}
+	selected := make([]*hand.Card, 2)
 	for _, indexes := range util.Combinations(4, 2) {
-		selected := []*hand.Card{}
-		for _, i := range indexes {
-			selected = append(selected, holeCards[i])
+		for j, i := range indexes {
+			selected[j] = holeCards[i]
 		}
 		cards := append(board, selected...)
 		hands = append(hands, hand.New(cards, opts))
@@ -372,13 +378,13 @@ func omahaHands(holeCards []*hand.Card, board []*hand.Card, opts func(*hand.Conf
 	return hands
 }
 
-func exposedCards(holeCards map[int][]*HoleCard) map[int][]*HoleCard {
-	exposed := map[int][]*HoleCard{}
+func exposedCards(holeCards map[int][]*HoleCard) map[int][]*hand.Card {
+	exposed := map[int][]*hand.Card{}
 	for seat, hCards := range holeCards {
-		eCards := []*HoleCard{}
+		eCards := []*hand.Card{}
 		for _, hc := range hCards {
 			if hc.Visibility == Exposed {
-				eCards = append(eCards, hc)
+				eCards = append(eCards, hc.Card)
 			}
 		}
 		exposed[seat] = eCards

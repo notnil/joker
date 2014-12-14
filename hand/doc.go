@@ -5,7 +5,7 @@ Package hand implements poker hand evaluation and ranking.
 
 To install run:
 
-	go get github.com/SyntropyDev/joker/hand
+	go get github.com/loganjspears/joker/hand
 
 Example usage:
 
@@ -14,7 +14,7 @@ Example usage:
 	import (
 		"fmt"
 
-		"github.com/SyntropyDev/joker/hand"
+		"github.com/loganjspears/joker/hand"
 	)
 
 	func main() {

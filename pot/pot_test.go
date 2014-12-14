@@ -4,12 +4,46 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/SyntropyDev/joker/hand"
-	"github.com/SyntropyDev/joker/jokertest"
-	"github.com/SyntropyDev/joker/pot"
+	"github.com/loganjspears/joker/hand"
+	"github.com/loganjspears/joker/jokertest"
+	"github.com/loganjspears/joker/pot"
+	"github.com/loganjspears/joker/util"
+)
+
+var (
+	holdemFunc = func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+		cards := append(board, holeCards...)
+		return hand.New(cards)
+	}
+
+	omahaHiFunc = func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+		opts := func(c *hand.Config) {}
+		hands := omahaHands(holeCards, board, opts)
+		hands = hand.Sort(hand.SortingHigh, hand.DESC, hands...)
+		return hands[0]
+	}
+
+	omahaLoFunc = func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand {
+		hands := omahaHands(holeCards, board, hand.AceToFiveLow)
+		hands = hand.Sort(hand.SortingLow, hand.DESC, hands...)
+		if hands[0].CompareTo(eightOrBetter) <= 0 {
+			return hands[0]
+		}
+		return nil
+	}
+
+	eightOrBetter = hand.New([]*hand.Card{
+		hand.EightSpades,
+		hand.SevenSpades,
+		hand.SixSpades,
+		hand.FiveSpades,
+		hand.FourSpades,
+	}, hand.AceToFiveLow)
 )
 
 func TestPotJSON(t *testing.T) {
+	t.Parallel()
+
 	p := pot.New(3)
 	p.Contribute(0, 1)
 
@@ -24,7 +58,7 @@ func TestPotJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	if p.Chips() != 1 {
-		t.Fatal("pot json deserialization unsuccessful")
+		t.Errorf("after json roundtrip pot.Chips() = %v; want %v", p.Chips(), 1)
 	}
 }
 
@@ -36,24 +70,24 @@ func TestHighPot(t *testing.T) {
 	p.Contribute(1, 10)
 	p.Contribute(2, 15)
 
-	seatToHoleCards := map[int][]*HoleCard{
-		0: []*HoleCard{
-			newHoleCard(hand.AceSpades, Concealed),
-			newHoleCard(hand.AceHearts, Concealed),
+	seatToHoleCards := map[int][]*hand.Card{
+		0: []*hand.Card{
+			hand.AceSpades,
+			hand.AceHearts,
 		},
-		1: []*HoleCard{
-			newHoleCard(hand.QueenSpades, Concealed),
-			newHoleCard(hand.QueenHearts, Concealed),
+		1: []*hand.Card{
+			hand.QueenSpades,
+			hand.QueenHearts,
 		},
-		2: []*HoleCard{
-			newHoleCard(hand.KingSpades, Concealed),
-			newHoleCard(hand.KingHearts, Concealed),
+		2: []*hand.Card{
+			hand.KingSpades,
+			hand.KingHearts,
 		},
 	}
 
 	board := jokertest.Cards("Ad", "Kd", "Qd", "2d", "2h")
-	hands := newHands(seatToHoleCards, board, Holdem.get().FormHighHand)
-	payout := pot.payout(hands, tableHands(map[int]*hand.Hand{}), hand.SortingHigh, false, 0)
+	hands := pot.NewHands(seatToHoleCards, board, holdemFunc)
+	payout := p.Payout(hands, nil, hand.SortingHigh, 0)
 
 	for seat, results := range payout {
 		switch seat {
@@ -76,59 +110,76 @@ func TestHighPot(t *testing.T) {
 func TestHighLowPot(t *testing.T) {
 	t.Parallel()
 
-	pot := newPot(3)
-	pot.contribute(0, 5)
-	pot.contribute(1, 5)
-	pot.contribute(2, 5)
+	p := pot.New(3)
+	p.Contribute(0, 5)
+	p.Contribute(1, 5)
+	p.Contribute(2, 5)
 
-	seatToHoleCards := map[int][]*HoleCard{
-		0: []*HoleCard{
-			newHoleCard(hand.AceHearts, Concealed),
-			newHoleCard(hand.TwoClubs, Concealed),
-			newHoleCard(hand.SevenDiamonds, Concealed),
-			newHoleCard(hand.KingHearts, Concealed),
+	seatToHoleCards := map[int][]*hand.Card{
+		0: []*hand.Card{
+			hand.AceHearts,
+			hand.TwoClubs,
+			hand.SevenDiamonds,
+			hand.KingHearts,
 		},
-		1: []*HoleCard{
-			newHoleCard(hand.AceDiamonds, Concealed),
-			newHoleCard(hand.FourClubs, Concealed),
-			newHoleCard(hand.ThreeDiamonds, Concealed),
-			newHoleCard(hand.SixSpades, Concealed),
+		1: []*hand.Card{
+			hand.AceDiamonds,
+			hand.FourClubs,
+			hand.ThreeDiamonds,
+			hand.SixSpades,
 		},
-		2: []*HoleCard{
-			newHoleCard(hand.AceSpades, Concealed),
-			newHoleCard(hand.TwoHearts, Concealed),
-			newHoleCard(hand.JackDiamonds, Concealed),
-			newHoleCard(hand.JackClubs, Concealed),
+		2: []*hand.Card{
+			hand.AceSpades,
+			hand.TwoHearts,
+			hand.JackDiamonds,
+			hand.JackClubs,
 		},
 	}
 
 	board := jokertest.Cards("7s", "Kd", "8h", "Jh", "5c")
-	highHands := newHands(seatToHoleCards, board, OmahaHiLo.get().FormHighHand)
-	lowHands := newHands(seatToHoleCards, board, OmahaHiLo.get().FormLowHand)
-	payout := pot.payout(highHands, lowHands, hand.SortingHigh, true, 0)
+	highHands := pot.NewHands(seatToHoleCards, board, omahaHiFunc)
+	lowHands := pot.NewHands(seatToHoleCards, board, omahaLoFunc)
+	payout := p.Payout(highHands, lowHands, hand.SortingHigh, 0)
+
+	if len(payout) < 3 {
+		t.Errorf("pot.Payout() should have 3 results")
+	}
 
 	for seat, results := range payout {
 		switch seat {
 		case 0:
 			if len(results) != 1 && total(results) != 4 {
-				t.Fatal("seat 0 should win 4 chips")
+				t.Errorf("seat 0 should win 4 chips")
 			}
 		case 1:
 			if len(results) != 1 && total(results) != 8 {
-				t.Fatal("seat 1 should win 8 chips")
+				t.Errorf("seat 1 should win 8 chips")
 			}
 		case 2:
 			if len(results) != 1 && total(results) != 3 {
-				t.Fatal("seat 2 should 3 chips")
+				t.Errorf("seat 2 should 3 chips")
 			}
 		}
 	}
 }
 
-func total(results []*PotResult) int {
+func total(results []*pot.Result) int {
 	chips := 0
 	for _, r := range results {
 		chips += r.Chips
 	}
 	return chips
+}
+
+func omahaHands(holeCards []*hand.Card, board []*hand.Card, opts func(*hand.Config)) []*hand.Hand {
+	hands := []*hand.Hand{}
+	for _, indexes := range util.Combinations(4, 2) {
+		selected := []*hand.Card{}
+		for _, i := range indexes {
+			selected = append(selected, holeCards[i])
+		}
+		cards := append(board, selected...)
+		hands = append(hands, hand.New(cards, opts))
+	}
+	return hands
 }

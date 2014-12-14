@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SyntropyDev/joker/hand"
-	"github.com/SyntropyDev/joker/table"
+	"github.com/loganjspears/joker/hand"
+	"github.com/loganjspears/joker/pot"
+	"github.com/loganjspears/joker/table"
 )
 
 const (
@@ -87,13 +88,13 @@ func main() {
 	p1 := playerFromInput("Player 1")
 	p2 := playerFromInput("Player 2")
 
-	opts := table.Options{
+	opts := table.Config{
 		Game:       table.Holdem,
 		Limit:      table.NoLimit,
 		Stakes:     table.Stakes{SmallBet: 1, BigBet: 2, Ante: 0},
-		NumOfSeats: table.TwoSeats,
+		NumOfSeats: 2,
 	}
-	tbl = table.New(opts, hand.NewDeck())
+	tbl = table.New(opts, hand.NewDealer())
 	if err := tbl.Sit(p1, 0, 100); err != nil {
 		panic(err)
 	}
@@ -131,7 +132,8 @@ func printTable(tbl *table.Table) {
 	fmt.Println("-----Table-----")
 	fmt.Println("")
 }
-func printResults(tbl *table.Table, results map[int][]*table.PotResult) {
+
+func printResults(tbl *table.Table, results map[int][]*pot.Result) {
 	players := tbl.Players()
 	for seat, resultList := range results {
 		for _, result := range resultList {

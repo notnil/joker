@@ -1,6 +1,6 @@
 package table
 
-import "github.com/SyntropyDev/joker/hand"
+import "github.com/loganjspears/joker/hand"
 
 // CardVisibility indicates a HoleCard's visibility to other players
 type CardVisibility string
@@ -42,6 +42,14 @@ func holeCardsPopMulti(d *hand.Deck, v CardVisibility, n int) []*HoleCard {
 		holeCards = append(holeCards, newHoleCard(c, v))
 	}
 	return holeCards
+}
+
+func cardsFromHoleCardMap(holeCards map[int][]*HoleCard) map[int][]*hand.Card {
+	cards := map[int][]*hand.Card{}
+	for seat, hCards := range holeCards {
+		cards[seat] = cardsFromHoleCards(hCards)
+	}
+	return cards
 }
 
 func cardsFromHoleCards(holeCards []*HoleCard) []*hand.Card {
