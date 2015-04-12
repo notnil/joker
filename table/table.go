@@ -52,109 +52,78 @@ var (
 	ErrInvalidAction = errors.New("table: player attempted invalid action")
 )
 
-// PlayerState is the state of a player at a table.
-type PlayerState struct {
-	player    Player
-	holeCards []*HoleCard
-	chips     int
-	acted     bool
-	out       bool
-	allin     bool
-	canRaise  bool
+// An Action is an action a player can take in a hand.
+type Action string
+
+const (
+	// Fold discards one's hand and forfeits interest in
+	// the current pot.
+	Fold Action = "Fold"
+
+	// Check is the forfeit to bet when not faced with a bet or
+	// raise.
+	Check Action = "Check"
+
+	// Call is a match of a bet or raise.
+	Call Action = "Call"
+
+	// Bet is a wager that others must match to remain a contender
+	// in the current pot.
+	Bet Action = "Bet"
+
+	// Raise is an increase to the original bet that others must
+	// match to remain a contender in the current pot.
+	Raise Action = "Raise"
+)
+
+// Stakes are the forced bet amounts for the table.
+type Stakes struct {
+
+	// SmallBet is the smaller forced bet amount.
+	SmallBet int `json:"smallBet"`
+
+	// BigBet is the bigger forced bet amount.
+	BigBet int `json:"bigBet"`
+
+	// Ante is the amount requried from each player to start the hand.
+	Ante int `json:"ante"`
 }
 
-// Acted returns whether or not the player has acted for the current round.
-func (state *PlayerState) Acted() bool {
-	return state.acted
-}
+// Limit is the bet and raise limits of a poker game
+type Limit string
 
-// AllIn returns whether or not the player is all in for the current hand.
-func (state *PlayerState) AllIn() bool {
-	return state.allin
-}
+const (
+	// NoLimit has no limit and players may go "all in"
+	NoLimit Limit = "NL"
 
-// CanRaise returns whether or not the player can raise in the current round.
-func (state *PlayerState) CanRaise() bool {
-	return state.canRaise
-}
+	// PotLimit has the current value of the pot as the limit
+	PotLimit Limit = "PL"
 
-// Chips returns the number of chips the player has in his or her stack.
-func (state *PlayerState) Chips() int {
-	return state.chips
-}
+	// FixedLimit restricted the size of bets and raises to predefined
+	// values based on the game and round.
+	FixedLimit Limit = "FL"
+)
 
-// HoleCards returns the hole cards the player currently has.
-func (state *PlayerState) HoleCards() []*HoleCard {
-	c := []*HoleCard{}
-	return append(c, state.holeCards...)
-}
+// Config are the configurations for creating a table.
+type Config struct {
 
-// Out returns whether or not the player is out of the current hand.
-func (state *PlayerState) Out() bool {
-	return state.out
-}
+	// Game is the game of the table.
+	Game Game `json:"game"`
 
-// Player returns the player.
-func (state *PlayerState) Player() Player {
-	return state.player
-}
+	// Limit is the limit of the table
+	Limit Limit `json:"limit"`
 
-// String returns a string useful for debugging.
-func (state *PlayerState) String() string {
-	const format = "{Player: %s, HoleCards: %v, Chips: %d, Acted: %t, Out: %t, AllIn: %t}"
-	return fmt.Sprintf(format,
-		state.player.ID(), state.holeCards, state.chips, state.acted, state.out, state.allin)
-}
+	// Stakes is the stakes for the table.
+	Stakes Stakes `json:"stakes"`
 
-type playerStateJSON struct {
-	ID        string      `json:"id"`
-	HoleCards []*HoleCard `json:"holeCards"`
-	Chips     int         `json:"chips"`
-	Acted     bool        `json:"acted"`
-	Out       bool        `json:"out"`
-	Allin     bool        `json:"allin"`
-	CanRaise  bool        `json:"canRaise"`
-}
+	// NumOfSeats is the number of seats available for the table.
+	NumOfSeats int `json:"numOfSeats"`
 
-// MarshalJSON implements the json.Marshaler interface.
-func (state *PlayerState) MarshalJSON() ([]byte, error) {
-	tpJSON := &playerStateJSON{
-		ID:        state.Player().ID(),
-		HoleCards: state.HoleCards(),
-		Chips:     state.Chips(),
-		Acted:     state.Acted(),
-		Out:       state.Out(),
-		Allin:     state.AllIn(),
-		CanRaise:  state.CanRaise(),
-	}
-	return json.Marshal(tpJSON)
-}
+	// MinBuyin is the minimum buyin a player can sit with
+	MinBuyin int `json:"minBuyin"`
 
-// UnmarshalJSON implements the json.Unmarshaler interface.
-func (state *PlayerState) UnmarshalJSON(b []byte) error {
-	tpJSON := &playerStateJSON{}
-	if err := json.Unmarshal(b, tpJSON); err != nil {
-		return err
-	}
-
-	if isNil(registeredPlayer) {
-		return errors.New("table: PlayerState json deserialization requires use of the RegisterPlayer function")
-	}
-
-	p, err := registeredPlayer.FromID(tpJSON.ID)
-	if err != nil {
-		return fmt.Errorf("table PlayerState json deserialization failed because of player %s FromID - %s", tpJSON.ID, err)
-	}
-
-	state.player = p
-	state.holeCards = tpJSON.HoleCards
-	state.chips = tpJSON.Chips
-	state.acted = tpJSON.Acted
-	state.out = tpJSON.Out
-	state.allin = tpJSON.Allin
-	state.canRaise = tpJSON.CanRaise
-
-	return nil
+	// MaxBuyin is the maximum buyin a player can sit with
+	MaxBuyin int `json:"maxBuyin"`
 }
 
 // Table represent a poker table and dealer.  A table manages the
@@ -168,7 +137,7 @@ type Table struct {
 	round       int
 	minRaise    int
 	board       []*hand.Card
-	players     map[int]*PlayerState
+	seats       *Seats
 	pot         *pot.Pot
 	startedHand bool
 }
@@ -184,14 +153,15 @@ func New(opts Config, dealer hand.Dealer) *Table {
 		panic(s)
 	}
 
+	seats := newSeats(opts.NumOfSeats, opts.MinBuyin, opts.MaxBuyin)
 	return &Table{
-		opts:    opts,
-		dealer:  dealer,
-		deck:    dealer.Deck(),
-		board:   []*hand.Card{},
-		players: map[int]*PlayerState{},
-		pot:     pot.New(int(opts.NumOfSeats)),
-		action:  -1,
+		opts:   opts,
+		dealer: dealer,
+		deck:   dealer.Deck(),
+		board:  []*hand.Card{},
+		seats:  seats,
+		pot:    pot.New(int(opts.NumOfSeats)),
+		action: -1,
 	}
 }
 
@@ -217,7 +187,7 @@ func (t *Table) Button() int {
 // CurrentPlayer returns the player the action is currently on.  If
 // no player is current then it returns nil.
 func (t *Table) CurrentPlayer() *PlayerState {
-	return t.players[t.Action()]
+	return t.seats.Players()[t.Action()]
 }
 
 // Game returns the game of the table.
@@ -232,11 +202,11 @@ func (t *Table) Limit() Limit {
 
 // MaxRaise returns the maximum number of chips that can be bet or
 // raised by the current player.  If there is no current player then
-// -1 is returned.
+// 0 is returned.
 func (t *Table) MaxRaise() int {
 	player := t.CurrentPlayer()
 	if isNil(player) {
-		return -1
+		return 0
 	}
 
 	outstanding := t.Outstanding()
@@ -266,11 +236,11 @@ func (t *Table) MaxRaise() int {
 
 // MinRaise returns the minimum number of chips that can be bet or
 // raised by the current player. If there is no current player then
-// -1 is returned.
+// 0 is returned.
 func (t *Table) MinRaise() int {
 	player := t.CurrentPlayer()
 	if isNil(player) {
-		return -1
+		return 0
 	}
 
 	outstanding := t.Outstanding()
@@ -292,33 +262,25 @@ func (t *Table) NumOfSeats() int {
 }
 
 // Outstanding returns the number of chips owed to the pot by the
-// current player.  If there is no current player then -1 is returned.
+// current player.  If there is no current player then 0 is returned.
 func (t *Table) Outstanding() int {
 	player := t.CurrentPlayer()
-	if isNil(player) {
-		return -1
-	}
-	if player.AllIn() || player.Out() {
+	if isNil(player) || player.AllIn() || player.Out() {
 		return 0
 	}
 	return t.pot.Outstanding(t.Action())
 }
 
-// Players returns a mapping of seats to player states.  Empty seats
-// are not included.
+// Players returns a mapping of seats to player states.
 func (t *Table) Players() map[int]*PlayerState {
-	players := map[int]*PlayerState{}
-	for seat, p := range t.players {
-		players[seat] = p
-	}
-	return players
+	return t.seats.Players()
 }
 
 // View returns a view of the table that only contains information
 // privileged to the given player.
 func (t *Table) View(p Player) *Table {
 	players := map[int]*PlayerState{}
-	for seat, player := range t.players {
+	for seat, player := range t.seats.Players() {
 		if p.ID() == player.Player().ID() {
 			players[seat] = player
 			continue
@@ -334,7 +296,9 @@ func (t *Table) View(p Player) *Table {
 			canRaise:  player.canRaise,
 		}
 	}
-
+	s := &Seats{
+		players: players,
+	}
 	return &Table{
 		opts:        t.opts,
 		deck:        &hand.Deck{Cards: []*hand.Card{}},
@@ -345,7 +309,7 @@ func (t *Table) View(p Player) *Table {
 		board:       t.board,
 		pot:         t.pot,
 		startedHand: t.startedHand,
-		players:     players,
+		seats:       s,
 	}
 }
 
@@ -441,7 +405,7 @@ func (t *Table) Next() (results map[int][]*pot.Result, done bool, err error) {
 
 	// check if only one person left
 	if t.everyoneFolded() {
-		for seat, player := range t.players {
+		for seat, player := range t.seats.Players() {
 			if player.out {
 				continue
 			}
@@ -452,46 +416,8 @@ func (t *Table) Next() (results map[int][]*pot.Result, done bool, err error) {
 		}
 	}
 
-	t.action = t.nextSeat(t.action+1, true)
+	t.action = t.seats.next(t.action+1, true)
 	return nil, false, nil
-}
-
-// Sit sits the player at the table with the given amount of chips.
-// An error is return if the seat is invalid, the player is already
-// seated, the seat is already occupied, or the chips are outside
-// the valid buy in amounts.
-func (t *Table) Sit(p Player, seat, chips int) error {
-	if !t.validSeat(seat) {
-		return ErrInvalidSeat
-	} else if t.isSeated(p) {
-		return ErrAlreadySeated
-	} else if _, occupied := t.players[seat]; occupied {
-		return ErrSeatOccupied
-	}
-
-	min := (t.opts.Stakes.SmallBet * 50)
-	max := (t.opts.Stakes.SmallBet * 200)
-	if chips < min || chips > max {
-		return ErrInvalidBuyin
-	}
-
-	t.players[seat] = &PlayerState{
-		player:    p,
-		holeCards: []*HoleCard{},
-		chips:     chips,
-	}
-	return nil
-}
-
-// Stand removes the player from the table.  If the player isn't
-// seated the command is ignored.
-func (t *Table) Stand(p Player) {
-	for seat, pl := range t.players {
-		if pl.player.ID() == p.ID() {
-			delete(t.players, seat)
-			return
-		}
-	}
 }
 
 type tableJSON struct {
@@ -545,6 +471,12 @@ func (t *Table) UnmarshalJSON(b []byte) error {
 		players[int(i)] = player
 	}
 
+	seats := &Seats{
+		players:  players,
+		minBuyin: tJSON.Options.MinBuyin,
+		maxBuyin: tJSON.Options.MaxBuyin,
+	}
+
 	t.opts = tJSON.Options
 	t.dealer = hand.NewDealer()
 	t.deck = tJSON.Deck
@@ -553,7 +485,7 @@ func (t *Table) UnmarshalJSON(b []byte) error {
 	t.round = tJSON.Round
 	t.minRaise = tJSON.MinRaise
 	t.board = tJSON.Board
-	t.players = players
+	t.seats = seats
 	t.pot = tJSON.Pot
 	t.startedHand = tJSON.StartedHand
 
@@ -563,13 +495,13 @@ func (t *Table) UnmarshalJSON(b []byte) error {
 func (t *Table) setUpHand() {
 	t.deck = t.dealer.Deck()
 	t.round = 0
-	t.button = t.nextSeat(t.button+1, false)
+	t.button = t.seats.next(t.button+1, false)
 	t.action = -1
 	t.pot = pot.New(t.NumOfSeats())
 
 	// reset cards
 	t.board = []*hand.Card{}
-	for _, player := range t.players {
+	for _, player := range t.seats.Players() {
 		player.holeCards = []*HoleCard{}
 		player.out = false
 		player.allin = false
@@ -582,13 +514,13 @@ func (t *Table) setUpRound() {
 	t.board = append(t.board, bCards...)
 	t.resetActed()
 
-	for seat, player := range t.players {
+	for seat, player := range t.seats.Players() {
 		// add hole cards
 		hCards := t.game().HoleCards(t.deck, round(t.round))
 		player.holeCards = append(player.holeCards, hCards...)
 
 		// add forced bets
-		pos := t.relativePosition(seat)
+		pos := t.seats.relativePos(t.button, seat)
 		chips := t.game().ForcedBet(t.holeCards(), t.opts, round(t.round), seat, pos)
 		t.addToPot(seat, chips)
 	}
@@ -596,7 +528,7 @@ func (t *Table) setUpRound() {
 	// set starting action position
 	relativePos := t.game().RoundStartSeat(t.holeCards(), round(t.round))
 	seat := (relativePos + t.button) % t.NumOfSeats()
-	t.action = t.nextSeat(seat, true)
+	t.action = t.seats.next(seat, true)
 
 	// set raise amounts
 	t.minRaise = t.opts.Stakes.BigBet
@@ -681,20 +613,6 @@ func (t *Table) addToPot(seat, chips int) {
 	t.pot.Contribute(seat, chips)
 }
 
-func (t *Table) nextSeat(seat int, playing bool) int {
-	count := 0
-	seat = seat % t.NumOfSeats()
-	for count < t.NumOfSeats() {
-		p, ok := t.players[seat]
-		if ok && (!playing || (!p.out && !p.allin && !p.acted)) {
-			return seat
-		}
-		count++
-		seat = (seat + 1) % t.NumOfSeats()
-	}
-	return -1
-}
-
 func (t *Table) hasNextHand() bool {
 	count := 0
 	for _, player := range t.players {
@@ -703,32 +621,6 @@ func (t *Table) hasNextHand() bool {
 		}
 	}
 	return count > 1
-}
-
-func (t *Table) isSeated(p Player) bool {
-	for _, pl := range t.players {
-		if p.ID() == pl.player.ID() {
-			return true
-		}
-	}
-	return false
-}
-
-func (t *Table) validSeat(seat int) bool {
-	return seat >= 0 && seat < t.NumOfSeats()
-}
-
-func (t *Table) relativePosition(seat int) int {
-	current := t.button
-	count := 0
-	for {
-		if current == seat {
-			break
-		}
-		current = t.nextSeat(current+1, false)
-		count++
-	}
-	return count
 }
 
 func (t *Table) holeCards() map[int][]*HoleCard {
