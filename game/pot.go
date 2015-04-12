@@ -1,4 +1,4 @@
-package pot
+package game
 
 import (
 	"encoding/json"
@@ -11,6 +11,14 @@ import (
 
 // Results is a scam
 type Results map[int][]*Result
+
+func (r Results) merge(o Results) Results {
+	c := map[int][]*Result{}
+	for seat, results := range r {
+		c[seat] = append(results, o[seat]...)
+	}
+	return Results(c)
+}
 
 // Share is the rights a winner has to the pot.
 type Share string
@@ -99,7 +107,10 @@ func (p *Pot) Take(seat int) Results {
 
 // Payout takes the high and low hands to produce pot results.
 // Sorting determines how a non-split pot winning hands are sorted.
-func (p *Pot) Payout(highHands, lowHands Hands, sorting hand.Sorting, button int) Results {
+func (p *Pot) Payout(results Results, button int) Results {
+	for _, pot := range p.sidePots() {
+
+	}
 	sidePots := p.sidePots()
 	if len(sidePots) > 1 {
 		results := map[int][]*Result{}
