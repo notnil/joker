@@ -1,15 +1,15 @@
-package pot
+package table
 
 import "github.com/loganjspears/joker/hand"
 
-// HandCreationFunc represents the function signature for creating a hand.
-type HandCreationFunc func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand
+// handCreationFunc represents the function signature for creating a hand.
+type handCreationFunc func(holeCards []*hand.Card, board []*hand.Card) *hand.Hand
 
-// Hands represents a map of seats to hands
-type Hands map[int]*hand.Hand
+// hands represents a map of seats to hands
+type hands map[int]*hand.Hand
 
-// NewHands forms hands from seat's hole cards and the board.
-func NewHands(holeCards map[int][]*hand.Card, board []*hand.Card, f HandCreationFunc) Hands {
+// newHands forms hands from seat's hole cards and the board.
+func newHands(holeCards map[int][]*hand.Card, board []*hand.Card, f handCreationFunc) hands {
 	hands := map[int]*hand.Hand{}
 	for seat, cards := range holeCards {
 		hands[seat] = f(cards, board)
@@ -18,9 +18,9 @@ func NewHands(holeCards map[int][]*hand.Card, board []*hand.Card, f HandCreation
 }
 
 // WinningHands returns the highest ranking hands with the given sorting.
-func (h Hands) WinningHands(sorting hand.Sorting) Hands {
+func (h hands) winningHands(sorting hand.Sorting) hands {
 	// copy all eligible hands (for Stud8 & Omaha8)
-	handsCopy := Hands(map[int]*hand.Hand{})
+	handsCopy := hands(map[int]*hand.Hand{})
 	for seat, hand := range h {
 		if hand != nil {
 			handsCopy[seat] = hand
@@ -41,10 +41,10 @@ func (h Hands) WinningHands(sorting hand.Sorting) Hands {
 			selected[seat] = hand
 		}
 	}
-	return Hands(selected)
+	return hands(selected)
 }
 
-func (h Hands) handsForSeats(seats []int) Hands {
+func (h hands) handsForSeats(seats []int) hands {
 	newHands := map[int]*hand.Hand{}
 	for seat, hand := range h {
 		found := false
@@ -58,7 +58,7 @@ func (h Hands) handsForSeats(seats []int) Hands {
 	return newHands
 }
 
-func (h Hands) slice() []*hand.Hand {
+func (h hands) slice() []*hand.Hand {
 	s := []*hand.Hand{}
 	for _, hand := range h {
 		s = append(s, hand)

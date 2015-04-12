@@ -1,4 +1,4 @@
-package pot
+package table
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"github.com/loganjspears/joker/hand"
 )
 
-// Results is a scam
+// Results is a mapping of each seat with its slice of results.
 type Results map[int][]*Result
 
 // Share is the rights a winner has to the pot.
@@ -49,8 +49,8 @@ type Pot struct {
 	contributions map[int]int
 }
 
-// New returns a pot with zero contributions for all seats.
-func New(numOfSeats int) *Pot {
+// newPot returns a pot with zero contributions for all seats.
+func newPot(numOfSeats int) *Pot {
 	contributions := map[int]int{}
 	for i := 0; i < numOfSeats; i++ {
 		contributions[i] = 0
@@ -80,7 +80,7 @@ func (p *Pot) Outstanding(seat int) int {
 }
 
 // Contribute contributes the chip amount from the seat given
-func (p *Pot) Contribute(seat, chips int) {
+func (p *Pot) contribute(seat, chips int) {
 	if chips < 0 {
 		panic("table: pot contribute negative bet amount")
 	}
@@ -88,7 +88,7 @@ func (p *Pot) Contribute(seat, chips int) {
 }
 
 // Take creates results with the seat taking the entire pot
-func (p *Pot) Take(seat int) Results {
+func (p *Pot) take(seat int) Results {
 	results := map[int][]*Result{
 		seat: []*Result{
 			{Hand: nil, Chips: p.Chips(), Share: WonHigh},
@@ -97,14 +97,14 @@ func (p *Pot) Take(seat int) Results {
 	return results
 }
 
-// Payout takes the high and low hands to produce pot results.
+// payout takes the high and low hands to produce pot results.
 // Sorting determines how a non-split pot winning hands are sorted.
-func (p *Pot) Payout(highHands, lowHands Hands, sorting hand.Sorting, button int) Results {
+func (p *Pot) payout(highHands, lowHands hands, sorting hand.Sorting, button int) Results {
 	sidePots := p.sidePots()
 	if len(sidePots) > 1 {
 		results := map[int][]*Result{}
 		for _, sp := range sidePots {
-			r := sp.Payout(highHands, lowHands, sorting, button)
+			r := sp.payout(highHands, lowHands, sorting, button)
 			results = combineResults(results, r)
 		}
 		return results
@@ -115,7 +115,7 @@ func (p *Pot) Payout(highHands, lowHands Hands, sorting hand.Sorting, button int
 
 	split := len(sideLowHands) > 0
 	if !split {
-		winners := sideHighHands.WinningHands(sorting)
+		winners := sideHighHands.winningHands(sorting)
 		switch sorting {
 		case hand.SortingHigh:
 			return p.resultsFromWinners(winners, p.Chips(), button, highPotShare)
@@ -124,8 +124,8 @@ func (p *Pot) Payout(highHands, lowHands Hands, sorting hand.Sorting, button int
 		}
 	}
 
-	highWinners := sideHighHands.WinningHands(hand.SortingHigh)
-	lowWinners := sideLowHands.WinningHands(hand.SortingLow)
+	highWinners := sideHighHands.winningHands(hand.SortingHigh)
+	lowWinners := sideLowHands.winningHands(hand.SortingLow)
 
 	if len(lowWinners) == 0 {
 		return p.resultsFromWinners(highWinners, p.Chips(), button, highPotShare)
@@ -185,7 +185,7 @@ func (p *Pot) UnmarshalJSON(b []byte) error {
 }
 
 // resultsFromWinners forms results for winners of the pot
-func (p *Pot) resultsFromWinners(winners Hands, chips, button int, f func(n int) Share) map[int][]*Result {
+func (p *Pot) resultsFromWinners(winners hands, chips, button int, f func(n int) Share) map[int][]*Result {
 	results := map[int][]*Result{}
 	winningSeats := []int{}
 	for seat, hand := range winners {

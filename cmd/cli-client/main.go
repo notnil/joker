@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/pot"
 	"github.com/loganjspears/joker/table"
 )
 
@@ -133,7 +132,7 @@ func printTable(tbl *table.Table) {
 	fmt.Println("")
 }
 
-func printResults(tbl *table.Table, results map[int][]*pot.Result) {
+func printResults(tbl *table.Table, results map[int][]*table.Result) {
 	players := tbl.Players()
 	for seat, resultList := range results {
 		for _, result := range resultList {

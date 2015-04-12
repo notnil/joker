@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/pot"
 	"github.com/loganjspears/joker/util"
 )
 
@@ -348,8 +347,8 @@ func (g *studGame) RoundStartSeat(holeCards holeCards, r round) int {
 	if (r != thirdSt && !g.IsRazz) || (r == thirdSt && g.IsRazz) {
 		sorting = hand.SortingHigh
 	}
-	hands := pot.NewHands(exposed, []*hand.Card{}, f)
-	hands = hands.WinningHands(sorting)
+	hands := newHands(exposed, []*hand.Card{}, f)
+	hands = hands.winningHands(sorting)
 
 	for seat := range hands {
 		return seat

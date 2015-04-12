@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/pot"
 )
 
 var (
@@ -169,7 +168,7 @@ type Table struct {
 	minRaise    int
 	board       []*hand.Card
 	players     map[int]*PlayerState
-	pot         *pot.Pot
+	pot         *Pot
 	startedHand bool
 }
 
@@ -190,7 +189,7 @@ func New(opts Config, dealer hand.Dealer) *Table {
 		deck:    dealer.Deck(),
 		board:   []*hand.Card{},
 		players: map[int]*PlayerState{},
-		pot:     pot.New(int(opts.NumOfSeats)),
+		pot:     newPot(int(opts.NumOfSeats)),
 		action:  -1,
 	}
 }
@@ -350,7 +349,7 @@ func (t *Table) View(p Player) *Table {
 }
 
 // Pot returns the current pot.
-func (t *Table) Pot() *pot.Pot {
+func (t *Table) Pot() *Pot {
 	return t.pot
 }
 
@@ -404,7 +403,7 @@ func (t *Table) ValidActions() []Action {
 // nil. err is nil unless there are insufficient players to start
 // the next hand or a player's action has an error. done indicates
 // that the table can not continue.
-func (t *Table) Next() (results map[int][]*pot.Result, done bool, err error) {
+func (t *Table) Next() (results map[int][]*Result, done bool, err error) {
 	if !t.startedHand {
 		if !t.hasNextHand() {
 			return nil, true, ErrInsufficientPlayers
@@ -420,9 +419,9 @@ func (t *Table) Next() (results map[int][]*pot.Result, done bool, err error) {
 
 		if t.round == t.game().NumOfRounds() {
 			holeCards := cardsFromHoleCardMap(t.holeCards())
-			highHands := pot.NewHands(holeCards, t.board, t.game().FormHighHand)
-			lowHands := pot.NewHands(holeCards, t.board, t.game().FormLowHand)
-			results = t.pot.Payout(highHands, lowHands, t.game().Sorting(), t.button)
+			highHands := newHands(holeCards, t.board, t.game().FormHighHand)
+			lowHands := newHands(holeCards, t.board, t.game().FormLowHand)
+			results = t.pot.payout(highHands, lowHands, t.game().Sorting(), t.button)
 			t.payoutResults(results)
 			t.startedHand = false
 			return results, false, nil
@@ -445,7 +444,7 @@ func (t *Table) Next() (results map[int][]*pot.Result, done bool, err error) {
 			if player.out {
 				continue
 			}
-			results = t.pot.Take(seat)
+			results = t.pot.take(seat)
 			t.payoutResults(results)
 			t.startedHand = false
 			return results, false, nil
@@ -503,7 +502,7 @@ type tableJSON struct {
 	MinRaise    int                     `json:"minRaise"`
 	Board       []*hand.Card            `json:"board"`
 	Players     map[string]*PlayerState `json:"players"`
-	Pot         *pot.Pot                `json:"pot"`
+	Pot         *Pot                    `json:"pot"`
 	StartedHand bool                    `json:"startedHand"`
 }
 
@@ -565,7 +564,7 @@ func (t *Table) setUpHand() {
 	t.round = 0
 	t.button = t.nextSeat(t.button+1, false)
 	t.action = -1
-	t.pot = pot.New(t.NumOfSeats())
+	t.pot = newPot(t.NumOfSeats())
 
 	// reset cards
 	t.board = []*hand.Card{}
@@ -614,7 +613,7 @@ func (t *Table) setUpRound() {
 	}
 }
 
-func (t *Table) payoutResults(resultsMap map[int][]*pot.Result) {
+func (t *Table) payoutResults(resultsMap map[int][]*Result) {
 	for seat, results := range resultsMap {
 		for _, result := range results {
 			amount := t.players[seat].chips + result.Chips
@@ -678,7 +677,7 @@ func (t *Table) addToPot(seat, chips int) {
 		p.allin = true
 	}
 	p.chips -= chips
-	t.pot.Contribute(seat, chips)
+	t.pot.contribute(seat, chips)
 }
 
 func (t *Table) nextSeat(seat int, playing bool) int {

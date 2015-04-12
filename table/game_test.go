@@ -5,7 +5,6 @@ import (
 
 	"github.com/loganjspears/joker/hand"
 	"github.com/loganjspears/joker/jokertest"
-	"github.com/loganjspears/joker/pot"
 )
 
 var tests = []struct {
@@ -149,11 +148,11 @@ func TestBringIn(t *testing.T) {
 }
 
 func BenchmarkHoldemShowdown(b *testing.B) {
-	p := pot.New(4)
-	p.Contribute(0, 100)
-	p.Contribute(1, 110)
-	p.Contribute(2, 120)
-	p.Contribute(3, 130)
+	p := newPot(4)
+	p.contribute(0, 100)
+	p.contribute(1, 110)
+	p.contribute(2, 120)
+	p.contribute(3, 130)
 
 	for i := 0; i < b.N; i++ {
 		deck := hand.NewDealer().Deck()
@@ -166,18 +165,18 @@ func BenchmarkHoldemShowdown(b *testing.B) {
 			}
 		}
 		hCards := cardsFromHoleCardMap(holeCards)
-		highHands := pot.NewHands(hCards, board, Holdem.get().FormHighHand)
-		lowHands := pot.NewHands(hCards, board, Holdem.get().FormLowHand)
-		p.Payout(highHands, lowHands, hand.SortingHigh, 0)
+		highHands := newHands(hCards, board, Holdem.get().FormHighHand)
+		lowHands := newHands(hCards, board, Holdem.get().FormLowHand)
+		p.payout(highHands, lowHands, hand.SortingHigh, 0)
 	}
 }
 
 func BenchmarkOmahaHiLoShowdown(b *testing.B) {
-	p := pot.New(4)
-	p.Contribute(0, 100)
-	p.Contribute(1, 110)
-	p.Contribute(2, 120)
-	p.Contribute(3, 130)
+	p := newPot(4)
+	p.contribute(0, 100)
+	p.contribute(1, 110)
+	p.contribute(2, 120)
+	p.contribute(3, 130)
 
 	for i := 0; i < b.N; i++ {
 		deck := hand.NewDealer().Deck()
@@ -192,9 +191,9 @@ func BenchmarkOmahaHiLoShowdown(b *testing.B) {
 			}
 		}
 		hCards := cardsFromHoleCardMap(holeCards)
-		highHands := pot.NewHands(hCards, board, OmahaHiLo.get().FormHighHand)
-		lowHands := pot.NewHands(hCards, board, OmahaHiLo.get().FormLowHand)
-		p.Payout(highHands, lowHands, hand.SortingHigh, 0)
+		highHands := newHands(hCards, board, OmahaHiLo.get().FormHighHand)
+		lowHands := newHands(hCards, board, OmahaHiLo.get().FormLowHand)
+		p.payout(highHands, lowHands, hand.SortingHigh, 0)
 	}
 }
 
