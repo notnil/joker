@@ -1,4 +1,4 @@
-package table
+package game
 
 import "github.com/loganjspears/joker/hand"
 
@@ -44,18 +44,16 @@ func (h hands) winningHands(sorting hand.Sorting) hands {
 	return hands(selected)
 }
 
-func (h hands) handsForSeats(seats []int) hands {
-	newHands := map[int]*hand.Hand{}
+func (h hands) results(sorting hand.Sorting) Results {
+	results := map[int][]*Result{}
 	for seat, hand := range h {
-		found := false
-		for _, s := range seats {
-			found = found || s == seat
-		}
-		if found {
-			newHands[seat] = hand
-		}
+		share := shareForSorting(sorting, len(h))
+		results[seat] = []*Result{&Result{
+			hand:  hand,
+			share: share,
+		}}
 	}
-	return newHands
+	return results
 }
 
 func (h hands) slice() []*hand.Hand {
