@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/loganjspears/joker/hand"
+	"github.com/notnil/joker/hand"
 )
 
 var (

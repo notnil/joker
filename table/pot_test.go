@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/jokertest"
+	"github.com/notnil/joker/hand"
+	"github.com/notnil/joker/jokertest"
 )
 
 var (

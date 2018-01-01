@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/loganjspears/joker/util"
+	"github.com/notnil/joker/util"
 )
 
 // A Ranking is one of the ten possible hand rankings that determine the
