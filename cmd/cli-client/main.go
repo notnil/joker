@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/table"
+	"github.com/notnil/joker/hand"
+	"github.com/notnil/joker/table"
 )
 
 const (

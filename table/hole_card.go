@@ -1,6 +1,6 @@
 package table
 
-import "github.com/loganjspears/joker/hand"
+import "github.com/notnil/joker/hand"
 
 // CardVisibility indicates a HoleCard's visibility to other players
 type CardVisibility string
