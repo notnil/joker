@@ -3,28 +3,31 @@ package hand
 import (
 	"math/rand"
 	"strings"
-	"time"
 )
 
 // Deck is a slice of cards used for dealing
 type Deck struct {
-	Cards []*Card
+	Cards []Card
 }
 
 // Pop removes a card from the deck and returns it.  Pop
 // panics if no cards are available.
-func (d *Deck) Pop() *Card {
+func (d *Deck) Pop() Card {
 	last := len(d.Cards) - 1
 	card := d.Cards[last]
 	d.Cards = d.Cards[:last]
 	return card
 }
 
-// PopMulti calls the Pop function on n number of cards.
-func (d *Deck) PopMulti(n int) []*Card {
-	cards := []*Card{}
+// PopMulti calls the Pop function on n number of cards.  PopMulti
+// panics if n is larger than the number of cards in the deck.
+func (d *Deck) PopMulti(n int) []Card {
+	if n > len(d.Cards) {
+		panic("deck doesn't have enough cards")
+	}
+	cards := make([]Card, n)
 	for i := 0; i < n; i++ {
-		cards = append(cards, d.Pop())
+		cards[i] = d.Pop()
 	}
 	return cards
 }
@@ -46,13 +49,13 @@ func (d *Deck) MarshalText() (text []byte, err error) {
 // UnmarshalText implements the encoding.TextUnmarshaler interface
 func (d *Deck) UnmarshalText(text []byte) error {
 	strs := strings.Split(string(text), ",")
-	cards := make([]*Card, len(strs))
+	cards := make([]Card, len(strs))
 	for i, s := range strs {
-		card := &Card{}
+		var card *Card
 		if err := card.UnmarshalText([]byte(s)); err != nil {
 			return err
 		}
-		cards[i] = card
+		cards[i] = *card
 	}
 	d.Cards = cards
 	return nil
@@ -63,22 +66,24 @@ type Dealer interface {
 	Deck() *Deck
 }
 
-// NewDealer returns a dealer that generates shuffled decks.
-func NewDealer() Dealer {
-	return dealer{}
+// NewDealer returns a dealer that generates shuffled decks
+// with the given random source.
+func NewDealer(r *rand.Rand) Dealer {
+	return dealer{r: r}
 }
 
-type dealer struct{}
+type dealer struct {
+	r *rand.Rand
+}
 
 func (d dealer) Deck() *Deck {
-	cards := shuffleCards(Cards())
+	cards := shuffleCards(d.r, Cards())
 	return &Deck{Cards: cards}
 }
 
-func shuffleCards(cards []*Card) []*Card {
-	rand.Seed(time.Now().UTC().UnixNano())
-	dest := []*Card{}
-	perm := rand.Perm(len(cards))
+func shuffleCards(r *rand.Rand, cards []Card) []Card {
+	dest := []Card{}
+	perm := r.Perm(len(cards))
 	for _, v := range perm {
 		dest = append(dest, cards[v])
 	}

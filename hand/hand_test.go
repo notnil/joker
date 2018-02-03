@@ -1,104 +1,104 @@
 package hand_test
 
 import (
-	"encoding/json"
+	"math/rand"
 	"testing"
 
-	. "github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/jokertest"
+	"github.com/notnil/joker/hand"
+	. "github.com/notnil/joker/jokertest"
 )
 
 type testPair struct {
-	cards       []*Card
-	arrangement []*Card
-	ranking     Ranking
+	cards       []hand.Card
+	arrangement []hand.Card
+	ranking     hand.Ranking
 	description string
 }
 
 var tests = []testPair{
 	{
-		jokertest.Cards("Ks", "Qs", "Js", "As", "9d"),
-		jokertest.Cards("As", "Ks", "Qs", "Js", "9d"),
-		HighCard,
+		Cards("Ks", "Qs", "Js", "As", "9d"),
+		Cards("As", "Ks", "Qs", "Js", "9d"),
+		hand.HighCard,
 		"high card ace high",
 	},
 	{
-		jokertest.Cards("Ks", "Qh", "Qs", "Js", "9d"),
-		jokertest.Cards("Qh", "Qs", "Ks", "Js", "9d"),
-		Pair,
+		Cards("Ks", "Qh", "Qs", "Js", "9d"),
+		Cards("Qh", "Qs", "Ks", "Js", "9d"),
+		hand.Pair,
 		"pair of queens",
 	},
 	{
-		jokertest.Cards("2s", "Qh", "Qs", "Js", "2d"),
-		jokertest.Cards("Qh", "Qs", "2s", "2d", "Js"),
-		TwoPair,
+		Cards("2s", "Qh", "Qs", "Js", "2d"),
+		Cards("Qh", "Qs", "2s", "2d", "Js"),
+		hand.TwoPair,
 		"two pair queens and twos",
 	},
 	{
-		jokertest.Cards("6s", "Qh", "Ks", "6h", "6d"),
-		jokertest.Cards("6s", "6h", "6d", "Ks", "Qh"),
-		ThreeOfAKind,
+		Cards("6s", "Qh", "Ks", "6h", "6d"),
+		Cards("6s", "6h", "6d", "Ks", "Qh"),
+		hand.ThreeOfAKind,
 		"three of a kind sixes",
 	},
 	{
-		jokertest.Cards("Ks", "Qs", "Js", "As", "Td"),
-		jokertest.Cards("As", "Ks", "Qs", "Js", "Td"),
-		Straight,
+		Cards("Ks", "Qs", "Js", "As", "Td"),
+		Cards("As", "Ks", "Qs", "Js", "Td"),
+		hand.Straight,
 		"straight ace high",
 	},
 	{
-		jokertest.Cards("2s", "3s", "4s", "As", "5d"),
-		jokertest.Cards("5d", "4s", "3s", "2s", "As"),
-		Straight,
+		Cards("2s", "3s", "4s", "As", "5d"),
+		Cards("5d", "4s", "3s", "2s", "As"),
+		hand.Straight,
 		"straight five high",
 	},
 	{
-		jokertest.Cards("7s", "4s", "5s", "3s", "2s"),
-		jokertest.Cards("7s", "5s", "4s", "3s", "2s"),
-		Flush,
+		Cards("7s", "4s", "5s", "3s", "2s"),
+		Cards("7s", "5s", "4s", "3s", "2s"),
+		hand.Flush,
 		"flush seven high",
 	},
 	{
-		jokertest.Cards("7s", "7d", "3s", "3d", "7h"),
-		jokertest.Cards("7s", "7d", "7h", "3s", "3d"),
-		FullHouse,
+		Cards("7s", "7d", "3s", "3d", "7h"),
+		Cards("7s", "7d", "7h", "3s", "3d"),
+		hand.FullHouse,
 		"full house sevens full of threes",
 	},
 	{
-		jokertest.Cards("7s", "7d", "3s", "7c", "7h"),
-		jokertest.Cards("7s", "7d", "7c", "7h", "3s"),
-		FourOfAKind,
+		Cards("7s", "7d", "3s", "7c", "7h"),
+		Cards("7s", "7d", "7c", "7h", "3s"),
+		hand.FourOfAKind,
 		"four of a kind sevens",
 	},
 	{
-		jokertest.Cards("Ks", "Qs", "Js", "Ts", "9s"),
-		jokertest.Cards("Ks", "Qs", "Js", "Ts", "9s"),
-		StraightFlush,
+		Cards("Ks", "Qs", "Js", "Ts", "9s"),
+		Cards("Ks", "Qs", "Js", "Ts", "9s"),
+		hand.StraightFlush,
 		"straight flush king high",
 	},
 	{
-		jokertest.Cards("As", "5s", "4s", "3s", "2s"),
-		jokertest.Cards("5s", "4s", "3s", "2s", "As"),
-		StraightFlush,
+		Cards("As", "5s", "4s", "3s", "2s"),
+		Cards("5s", "4s", "3s", "2s", "As"),
+		hand.StraightFlush,
 		"straight flush five high",
 	},
 	{
-		jokertest.Cards("As", "Ks", "Qs", "Js", "Ts"),
-		jokertest.Cards("As", "Ks", "Qs", "Js", "Ts"),
-		RoyalFlush,
+		Cards("As", "Ks", "Qs", "Js", "Ts"),
+		Cards("As", "Ks", "Qs", "Js", "Ts"),
+		hand.RoyalFlush,
 		"royal flush",
 	},
 	{
-		jokertest.Cards("As", "Ks", "Qs", "2s", "2c", "2h", "2d"),
-		jokertest.Cards("2s", "2c", "2h", "2d", "As"),
-		FourOfAKind,
+		Cards("As", "Ks", "Qs", "2s", "2c", "2h", "2d"),
+		Cards("2s", "2c", "2h", "2d", "As"),
+		hand.FourOfAKind,
 		"four of a kind twos",
 	},
 }
 
 func TestHands(t *testing.T) {
 	for _, test := range tests {
-		h := New(test.cards)
+		h := hand.New(test.cards)
 		if h.Ranking() != test.ranking {
 			t.Fatalf("expected %v got %v", test.ranking, h.Ranking())
 		}
@@ -123,28 +123,28 @@ const (
 )
 
 type testEquality struct {
-	cards1 []*Card
-	cards2 []*Card
+	cards1 []hand.Card
+	cards2 []hand.Card
 	e      equality
 }
 
 var equalityTests = []testEquality{
 	{
-		jokertest.Cards("As", "5s", "4s", "3s", "2s"),
-		jokertest.Cards("Ks", "Kc", "Kh", "Jd", "Js"),
+		Cards("As", "5s", "4s", "3s", "2s"),
+		Cards("Ks", "Kc", "Kh", "Jd", "Js"),
 		greaterThan,
 	},
 	{
-		jokertest.Cards("Ts", "9h", "8d", "7c", "6s", "2h", "3s"),
-		jokertest.Cards("Ts", "9h", "8d", "7c", "6s", "Ah", "Ks"),
+		Cards("Ts", "9h", "8d", "7c", "6s", "2h", "3s"),
+		Cards("Ts", "9h", "8d", "7c", "6s", "Ah", "Ks"),
 		equalTo,
 	},
 }
 
 func TestCompareHands(t *testing.T) {
 	for _, test := range equalityTests {
-		h1 := New(test.cards1)
-		h2 := New(test.cards2)
+		h1 := hand.New(test.cards1)
+		h2 := hand.New(test.cards2)
 		compareTo := h1.CompareTo(h2)
 
 		switch test.e {
@@ -165,40 +165,40 @@ func TestCompareHands(t *testing.T) {
 }
 
 type testOptionsPairs struct {
-	cards       []*Card
-	arrangement []*Card
-	options     []func(*Config)
-	ranking     Ranking
+	cards       []hand.Card
+	arrangement []hand.Card
+	options     []func(*hand.Config)
+	ranking     hand.Ranking
 	description string
 }
 
 var optTests = []testOptionsPairs{
 	{
-		jokertest.Cards("Ks", "Qs", "Js", "As", "9s"),
-		jokertest.Cards("As", "Ks", "Qs", "Js", "9s"),
-		[]func(*Config){Low},
-		Flush,
+		Cards("Ks", "Qs", "Js", "As", "9s"),
+		Cards("As", "Ks", "Qs", "Js", "9s"),
+		[]func(*hand.Config){hand.Low},
+		hand.Flush,
 		"flush ace high",
 	},
 	{
-		jokertest.Cards("7h", "6h", "5s", "4s", "2s", "3s"),
-		jokertest.Cards("6h", "5s", "4s", "3s", "2s"),
-		[]func(*Config){AceToFiveLow},
-		HighCard,
+		Cards("7h", "6h", "5s", "4s", "2s", "3s"),
+		Cards("6h", "5s", "4s", "3s", "2s"),
+		[]func(*hand.Config){hand.AceToFiveLow},
+		hand.HighCard,
 		"high card six high",
 	},
 	{
-		jokertest.Cards("Ah", "6h", "5s", "4s", "2s", "Ks"),
-		jokertest.Cards("6h", "5s", "4s", "2s", "Ah"),
-		[]func(*Config){AceToFiveLow},
-		HighCard,
+		Cards("Ah", "6h", "5s", "4s", "2s", "Ks"),
+		Cards("6h", "5s", "4s", "2s", "Ah"),
+		[]func(*hand.Config){hand.AceToFiveLow},
+		hand.HighCard,
 		"high card six high",
 	},
 }
 
 func TestHandsWithOptions(t *testing.T) {
 	for _, test := range optTests {
-		h := New(test.cards, test.options...)
+		h := hand.New(test.cards, test.options...)
 		if h.Ranking() != test.ranking {
 			t.Fatalf("expected %v got %v", test.ranking, h.Ranking())
 		}
@@ -215,21 +215,22 @@ func TestHandsWithOptions(t *testing.T) {
 }
 
 func TestBlanks(t *testing.T) {
-	cards := []*Card{AceSpades}
-	hand := New(cards)
-	if hand.Ranking() != HighCard {
+	cards := []hand.Card{hand.AceSpades}
+	h := hand.New(cards)
+	if h.Ranking() != hand.HighCard {
 		t.Fatal("blank card error")
 	}
 
-	cards = []*Card{FiveSpades, FiveClubs}
-	hand = New(cards)
-	if hand.Ranking() != Pair {
+	cards = []hand.Card{hand.FiveSpades, hand.FiveClubs}
+	h = hand.New(cards)
+	if h.Ranking() != hand.Pair {
 		t.Fatal("blank card error")
 	}
 }
 
 func TestDeck(t *testing.T) {
-	deck := NewDealer().Deck()
+	r := rand.New(rand.NewSource(0))
+	deck := hand.NewDealer(r).Deck()
 	if deck.Pop() == deck.Pop() {
 		t.Fatal("Two Pop() calls should never return the same result")
 	}
@@ -239,25 +240,28 @@ func TestDeck(t *testing.T) {
 	}
 }
 
-func TestCardJSON(t *testing.T) {
-	card := AceSpades
+func TestCardMarshalText(t *testing.T) {
+	card := hand.AceSpades
 
-	// to json
-	b, err := json.Marshal(card)
+	// to text
+	b, err := card.MarshalText()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// and back
-	cardCopy := KingHearts
-	if err := json.Unmarshal(b, cardCopy); err != nil {
+	cp := hand.AceClubs
+	cp2 := &cp
+	if err := cp2.UnmarshalText(b); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func BenchmarkHandCreation(b *testing.B) {
+	r := rand.New(rand.NewSource(0))
+	cards := hand.NewDealer(r).Deck().PopMulti(7)
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cards := NewDealer().Deck().PopMulti(7)
-		New(cards)
+		hand.New(cards)
 	}
 }

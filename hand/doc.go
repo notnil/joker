@@ -5,7 +5,7 @@ Package hand implements poker hand evaluation and ranking.
 
 To install run:
 
-	go get github.com/loganjspears/joker/hand
+	go get github.com/notnil/joker/hand
 
 Example usage:
 

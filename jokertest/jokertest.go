@@ -1,13 +1,13 @@
 package jokertest
 
-import "github.com/loganjspears/joker/hand"
+import "github.com/notnil/joker/hand"
 
 // Cards takes a list of strings that have the format "4s", "Tc",
 // "Ah" instead of the hand.Card String() format "4♠", "T♣", "A♥"
 // for ease of testing.  If a string is invalid Cards panics,
 // otherwise it returns a list of the corresponding cards.
-func Cards(list ...string) []*hand.Card {
-	cards := []*hand.Card{}
+func Cards(list ...string) []hand.Card {
+	cards := []hand.Card{}
 	for _, s := range list {
 		cards = append(cards, card(s))
 	}
@@ -16,17 +16,17 @@ func Cards(list ...string) []*hand.Card {
 
 // Dealer returns a hand.Dealer that generates decks that will pop
 // cards in the order of the cards given.
-func Dealer(cards []*hand.Card) hand.Dealer {
+func Dealer(cards []hand.Card) hand.Dealer {
 	return &deck{cards: cards}
 }
 
 type deck struct {
-	cards []*hand.Card
+	cards []hand.Card
 }
 
 func (d deck) Deck() *hand.Deck {
 	// copy cards
-	cards := make([]*hand.Card, len(d.cards))
+	cards := make([]hand.Card, len(d.cards))
 	copy(cards, d.cards)
 
 	// reverse cards
@@ -36,7 +36,7 @@ func (d deck) Deck() *hand.Deck {
 	return &hand.Deck{Cards: cards}
 }
 
-func card(s string) *hand.Card {
+func card(s string) hand.Card {
 	if len(s) != 2 {
 		panic("jokertest: card string must be two characters")
 	}

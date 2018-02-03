@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 
-	"github.com/loganjspears/joker/util"
+	"github.com/notnil/joker/util"
 )
 
 // A Ranking is one of the ten possible hand rankings that determine the
@@ -107,7 +106,7 @@ func AceToFiveLow(c *Config) {
 // A Hand is the highest poker hand derived from five or more cards.
 type Hand struct {
 	ranking     Ranking
-	cards       []*Card
+	cards       []Card
 	description string
 }
 
@@ -116,7 +115,7 @@ type Hand struct {
 // the winning hand out of all five card combinations.  If there are
 // less than five cards, blank cards will be inserted so that a value
 // can still be calculated.
-func New(cards []*Card, options ...func(*Config)) *Hand {
+func New(cards []Card, options ...func(*Config)) *Hand {
 	c := &Config{}
 	for _, option := range options {
 		option(c)
@@ -139,7 +138,7 @@ func (h *Hand) Ranking() Ranking {
 }
 
 // Cards returns the five cards used in the best hand ranking for the hand.
-func (h *Hand) Cards() []*Card {
+func (h *Hand) Cards() []Card {
 	return h.cards
 }
 
@@ -165,9 +164,9 @@ func (h *Hand) CompareTo(o *Hand) int {
 	oCards := o.Cards()
 	for i := 0; i < 5; i++ {
 		hCard, oCard := hCards[i], oCards[i]
-		hIndex, oIndex := hCard.Rank().indexOf(), oCard.Rank().indexOf()
+		hIndex, oIndex := hCard.Rank(), oCard.Rank()
 		if hIndex != oIndex {
-			return hIndex - oIndex
+			return int(hIndex) - int(oIndex)
 		}
 	}
 	return 0
@@ -192,7 +191,7 @@ func (h *Hand) MarshalJSON() ([]byte, error) {
 // {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
 func (h *Hand) UnmarshalJSON(b []byte) error {
 	type handJSON struct {
-		Cards []*Card
+		Cards []Card
 	}
 	m := &handJSON{}
 	if err := json.Unmarshal(b, m); err != nil {
@@ -235,7 +234,7 @@ func (a byHighHand) Less(i, j int) bool {
 	return iHand.CompareTo(jHand) < 0
 }
 
-func handForFiveCards(cards []*Card, c Config) *Hand {
+func handForFiveCards(cards []Card, c Config) *Hand {
 	cards = formCards(cards, c)
 	for _, r := range rankings {
 		if r.vFunc(cards, c) {
@@ -249,8 +248,8 @@ func handForFiveCards(cards []*Card, c Config) *Hand {
 	panic("unreachable")
 }
 
-func cardCombos(cards []*Card) [][]*Card {
-	cCombo := [][]*Card{}
+func cardCombos(cards []Card) [][]Card {
+	cCombo := [][]Card{}
 	l := 5
 	if len(cards) < 5 {
 		l = len(cards)
@@ -258,7 +257,7 @@ func cardCombos(cards []*Card) [][]*Card {
 	indexCombos := util.Combinations(len(cards), l)
 
 	for _, combo := range indexCombos {
-		cCards := []*Card{}
+		cCards := []Card{}
 		for _, i := range combo {
 			cCards = append(cCards, cards[i])
 		}
@@ -273,13 +272,13 @@ type ranking struct {
 	dFunc descFunc
 }
 
-type validFunc func([]*Card, Config) bool
-type descFunc func([]*Card) string
+type validFunc func([]Card, Config) bool
+type descFunc func([]Card) string
 
 var (
 	highCard = ranking{
 		r: HighCard,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			flush := hasFlush(cards)
 			straight := hasStraight(cards)
 			pairs := hasPairs(cards, []int{1, 1, 1, 1, 1})
@@ -291,7 +290,7 @@ var (
 			}
 			return pairs
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r := cards[0].Rank()
 			return fmt.Sprintf("high card %v high", r.singularName())
 		},
@@ -299,10 +298,10 @@ var (
 
 	pair = ranking{
 		r: Pair,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			return hasPairs(cards, []int{2, 2, 1, 1, 1})
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r := cards[0].Rank()
 			return fmt.Sprintf("pair of %v", r.pluralName())
 		},
@@ -310,10 +309,10 @@ var (
 
 	twoPair = ranking{
 		r: TwoPair,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			return hasPairs(cards, []int{2, 2, 2, 2, 1})
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r1 := cards[0].Rank()
 			r2 := cards[2].Rank()
 			return fmt.Sprintf("two pair %v and %v", r1.pluralName(), r2.pluralName())
@@ -322,10 +321,10 @@ var (
 
 	threeOfAKind = ranking{
 		r: ThreeOfAKind,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			return hasPairs(cards, []int{3, 3, 3, 1, 1})
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r := cards[0].Rank()
 			return fmt.Sprintf("three of a kind %v", r.pluralName())
 		},
@@ -333,7 +332,7 @@ var (
 
 	straight = ranking{
 		r: Straight,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			if c.ignoreStraights {
 				return false
 			}
@@ -341,7 +340,7 @@ var (
 			straight := hasStraight(cards)
 			return !flush && straight
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r := cards[0].Rank()
 			return fmt.Sprintf("straight %v high", r.singularName())
 		},
@@ -349,7 +348,7 @@ var (
 
 	flush = ranking{
 		r: Flush,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			if c.ignoreFlushes {
 				return false
 			}
@@ -358,7 +357,7 @@ var (
 			straight := hasStraight(cards)
 			return flush && !straight
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r1 := cards[0].Rank()
 			return fmt.Sprintf("flush %v high", r1.singularName())
 		},
@@ -366,10 +365,10 @@ var (
 
 	fullHouse = ranking{
 		r: FullHouse,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			return hasPairs(cards, []int{3, 3, 3, 2, 2})
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r1 := cards[0].Rank()
 			r2 := cards[3].Rank()
 			return fmt.Sprintf("full house %v full of %v", r1.pluralName(), r2.pluralName())
@@ -378,10 +377,10 @@ var (
 
 	fourOfAKind = ranking{
 		r: FourOfAKind,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			return hasPairs(cards, []int{4, 4, 4, 4, 1})
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r := cards[0].Rank()
 			return fmt.Sprintf("four of a kind %v", r.pluralName())
 		},
@@ -389,7 +388,7 @@ var (
 
 	straightFlush = ranking{
 		r: StraightFlush,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			if c.ignoreStraights || c.ignoreFlushes {
 				return false
 			}
@@ -397,7 +396,7 @@ var (
 			straight := hasStraight(cards)
 			return cards[0].Rank() != Ace && flush && straight
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			r := cards[0].Rank()
 			return fmt.Sprintf("straight flush %v high", r.singularName())
 		},
@@ -405,7 +404,7 @@ var (
 
 	royalFlush = ranking{
 		r: RoyalFlush,
-		vFunc: func(cards []*Card, c Config) bool {
+		vFunc: func(cards []Card, c Config) bool {
 			if c.ignoreStraights || c.ignoreFlushes {
 				return false
 			}
@@ -413,7 +412,7 @@ var (
 			straight := hasStraight(cards)
 			return cards[0].Rank() == Ace && flush && straight
 		},
-		dFunc: func(cards []*Card) string {
+		dFunc: func(cards []Card) string {
 			return "royal flush"
 		},
 	}
@@ -422,7 +421,7 @@ var (
 		straight, flush, fullHouse, fourOfAKind, straightFlush, royalFlush}
 )
 
-func formCards(cards []*Card, c Config) []*Card {
+func formCards(cards []Card, c Config) []Card {
 	var ranks []Rank
 	if c.aceIsLow {
 		// sort cards staring w/ king
@@ -439,7 +438,7 @@ func formCards(cards []*Card, c Config) []*Card {
 	}
 
 	// form cards starting w/ most paired
-	formed := []*Card{}
+	formed := []Card{}
 	for i := 4; i > 0; i-- {
 		for _, r := range ranks {
 			rCards := cardsForRank(cards, r)
@@ -448,20 +447,17 @@ func formCards(cards []*Card, c Config) []*Card {
 			}
 		}
 	}
-
-	dif := 5 - len(formed)
-	for i := 0; i < dif; i++ {
-		s := fmt.Sprintf("?%d", i+1)
-		formed = append(formed, &Card{rank: Rank(s), suit: Suit(s)})
-	}
 	// check for low straight
 	return formLowStraight(formed)
 }
 
-func hasPairs(cards []*Card, pairNums []int) bool {
+func hasPairs(cards []Card, pairNums []int) bool {
 	for i := 0; i < 5; i++ {
-		card := cards[i]
 		num := pairNums[i]
+		if i >= len(cards) {
+			return num == 1
+		}
+		card := cards[i]
 		if num != len(cardsForRank(cards, card.Rank())) {
 			return false
 		}
@@ -469,8 +465,8 @@ func hasPairs(cards []*Card, pairNums []int) bool {
 	return true
 }
 
-func hasFlush(cards []*Card) bool {
-	if hasBlankCards(cards) {
+func hasFlush(cards []Card) bool {
+	if len(cards) != 5 {
 		return false
 	}
 	suit := cards[0].Suit()
@@ -481,21 +477,21 @@ func hasFlush(cards []*Card) bool {
 	return has
 }
 
-func hasStraight(cards []*Card) bool {
-	if hasBlankCards(cards) {
+func hasStraight(cards []Card) bool {
+	if len(cards) != 5 {
 		return false
 	}
-	lastIndex := cards[0].Rank().indexOf()
+	lastIndex := cards[0].Rank()
 	straight := true
 	for i := 1; i < 5; i++ {
-		index := cards[i].Rank().indexOf()
+		index := cards[i].Rank()
 		straight = straight && (lastIndex == index+1)
 		lastIndex = index
 	}
 	return straight || hasLowStraight(cards)
 }
 
-func hasLowStraight(cards []*Card) bool {
+func hasLowStraight(cards []Card) bool {
 	return cards[0].Rank() == Five &&
 		cards[1].Rank() == Four &&
 		cards[2].Rank() == Three &&
@@ -503,29 +499,23 @@ func hasLowStraight(cards []*Card) bool {
 		cards[4].Rank() == Ace
 }
 
-func formLowStraight(cards []*Card) []*Card {
+func formLowStraight(cards []Card) []Card {
+	if len(cards) < 5 {
+		return cards
+	}
 	has := cards[0].Rank() == Ace &&
 		cards[1].Rank() == Five &&
 		cards[2].Rank() == Four &&
 		cards[3].Rank() == Three &&
 		cards[4].Rank() == Two
 	if has {
-		cards = []*Card{cards[1], cards[2], cards[3], cards[4], cards[0]}
+		cards = []Card{cards[1], cards[2], cards[3], cards[4], cards[0]}
 	}
 	return cards
 }
 
-func hasBlankCards(cards []*Card) bool {
-	for _, c := range cards {
-		if strings.Contains(string(c.Rank()), "?") {
-			return true
-		}
-	}
-	return false
-}
-
-func cardsForRank(cards []*Card, r Rank) []*Card {
-	rCards := []*Card{}
+func cardsForRank(cards []Card, r Rank) []Card {
+	rCards := []Card{}
 	for _, c := range cards {
 		if c.Rank() == r {
 			rCards = append(rCards, c)
