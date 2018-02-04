@@ -197,15 +197,14 @@ func (c *Card) UnmarshalText(text []byte) error {
 		return errors.New("hand: invalid card text " + s)
 	}
 	rank := strings.Index(ranksStr, s[0:1])
+	if rank == -1 {
+		return errors.New("hand: invalid rank " + s[0:1])
+	}
 	suit, ok := suitsMap[s[1:]]
 	if !ok {
 		return errors.New("hand: invalid suit " + s[1:])
 	}
-	if rank == -1 {
-		return errors.New("hand: invalid rank " + s[0:1])
-	}
-	card := getCard(Rank(rank), suit)
-	c = &card
+	*c = getCard(Rank(rank), suit)
 	return nil
 }
 

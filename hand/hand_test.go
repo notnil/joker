@@ -1,6 +1,7 @@
 package hand_test
 
 import (
+	"encoding/json"
 	"math/rand"
 	"testing"
 
@@ -240,20 +241,18 @@ func TestDeck(t *testing.T) {
 	}
 }
 
-func TestCardMarshalText(t *testing.T) {
-	card := hand.AceSpades
-
-	// to text
-	b, err := card.MarshalText()
+func TestHandJSON(t *testing.T) {
+	jsonStr := `{"ranking":10,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush","config":{"sorting":1,"ignoreStraights":false,"ignoreFlushes":false,"aceIsLow":false}}`
+	h := &hand.Hand{}
+	if err := json.Unmarshal([]byte(jsonStr), h); err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.Marshal(h)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// and back
-	cp := hand.AceClubs
-	cp2 := &cp
-	if err := cp2.UnmarshalText(b); err != nil {
-		t.Fatal(err)
+	if string(b) != jsonStr {
+		t.Fatalf("expected json %s but got %s", jsonStr, string(b))
 	}
 }
 

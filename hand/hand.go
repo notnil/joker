@@ -88,6 +88,37 @@ type Config struct {
 	aceIsLow        bool
 }
 
+type configJSON struct {
+	Sorting         Sorting `json:"sorting"`
+	IgnoreStraights bool    `json:"ignoreStraights"`
+	IgnoreFlushes   bool    `json:"ignoreFlushes"`
+	AceIsLow        bool    `json:"aceIsLow"`
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (c *Config) MarshalJSON() ([]byte, error) {
+	m := &configJSON{
+		Sorting:         c.sorting,
+		IgnoreStraights: c.ignoreStraights,
+		IgnoreFlushes:   c.ignoreFlushes,
+		AceIsLow:        c.aceIsLow,
+	}
+	return json.Marshal(m)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (c *Config) UnmarshalJSON(b []byte) error {
+	m := &configJSON{}
+	if err := json.Unmarshal(b, m); err != nil {
+		return err
+	}
+	c.sorting = m.Sorting
+	c.ignoreStraights = m.IgnoreStraights
+	c.ignoreFlushes = m.IgnoreFlushes
+	c.aceIsLow = m.AceIsLow
+	return nil
+}
+
 // Low configures NewHand to select the lowest hand in which aces
 // are high and straights and flushes are counted.
 func Low(c *Config) {
@@ -108,27 +139,27 @@ type Hand struct {
 	ranking     Ranking
 	cards       []Card
 	description string
+	config      *Config
 }
 
 // New forms a hand from the given cards and configuration
 // options.  If there are more than five cards, New will return
 // the winning hand out of all five card combinations.  If there are
-// less than five cards, blank cards will be inserted so that a value
-// can still be calculated.
+// less than five cards, the best ranking will be calculated for the
+// cards given.
 func New(cards []Card, options ...func(*Config)) *Hand {
 	c := &Config{}
 	for _, option := range options {
 		option(c)
 	}
-
 	combos := cardCombos(cards)
 	hands := []*Hand{}
 	for _, combo := range combos {
 		hand := handForFiveCards(combo, *c)
 		hands = append(hands, hand)
 	}
-
 	hands = Sort(c.sorting, DESC, hands...)
+	hands[0].config = c
 	return hands[0]
 }
 
@@ -139,7 +170,7 @@ func (h *Hand) Ranking() Ranking {
 
 // Cards returns the five cards used in the best hand ranking for the hand.
 func (h *Hand) Cards() []Card {
-	return h.cards
+	return append([]Card{}, h.cards...)
 }
 
 // Description returns a user displayable description of the hand such as
@@ -172,35 +203,45 @@ func (h *Hand) CompareTo(o *Hand) int {
 	return 0
 }
 
+type handJSON struct {
+	Ranking     Ranking `json:"ranking"`
+	Cards       []Card  `json:"cards"`
+	Description string  `json:"description"`
+	Config      *Config `json:"config"`
+}
+
 // MarshalJSON implements the json.Marshaler interface.
 // The json format is:
-// {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
+// {"ranking":10,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush","config":{"sorting":1,"ignoreStraights":false,"ignoreFlushes":false,"aceIsLow":false}}
 func (h *Hand) MarshalJSON() ([]byte, error) {
-	cards := h.Cards()
-	b, err := json.Marshal(&cards)
-	if err != nil {
-		return []byte{}, err
+	m := &handJSON{
+		Ranking:     h.ranking,
+		Cards:       h.cards,
+		Description: h.description,
+		Config:      h.config,
 	}
-	const format = `{"ranking":%v,"cards":%v,"description":"%v"}`
-	s := fmt.Sprintf(format, h.Ranking(), string(b), h.Description())
-	return []byte(s), nil
+	return json.Marshal(m)
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 //  The json format is:
-// {"ranking":9,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush"}
+// {"ranking":10,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush","config":{"sorting":1,"ignoreStraights":false,"ignoreFlushes":false,"aceIsLow":false}}
 func (h *Hand) UnmarshalJSON(b []byte) error {
-	type handJSON struct {
-		Cards []Card
-	}
 	m := &handJSON{}
 	if err := json.Unmarshal(b, m); err != nil {
 		return err
 	}
-	newHand := New(m.Cards)
-	h.cards = newHand.Cards()
-	h.ranking = newHand.Ranking()
-	h.description = newHand.Description()
+	f := func(c *Config) {
+		c.sorting = m.Config.sorting
+		c.ignoreStraights = m.Config.ignoreStraights
+		c.ignoreFlushes = m.Config.ignoreFlushes
+		c.aceIsLow = m.Config.aceIsLow
+	}
+	cp := New(m.Cards, f)
+	h.ranking = cp.ranking
+	h.cards = cp.cards
+	h.description = cp.description
+	h.config = cp.config
 	return nil
 }
 
@@ -215,7 +256,6 @@ func Sort(s Sorting, o Ordering, hands ...*Hand) []*Hand {
 	} else {
 		sort.Sort(sort.Reverse(byHighHand(handsCopy)))
 	}
-
 	return handsCopy
 }
 
