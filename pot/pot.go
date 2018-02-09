@@ -2,9 +2,9 @@ package pot
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"sort"
-
-	"github.com/notnil/joker/pot"
 )
 
 const (
@@ -20,6 +20,12 @@ const (
 	Bet
 	Raise
 )
+
+var actionStrs = []string{"Fold", "Check", "Call", "Bet", "Raise"}
+
+func (a Action) String() string {
+	return actionStrs[a]
+}
 
 type Seat struct {
 	Pos         int
@@ -50,7 +56,6 @@ type Pot struct {
 	seats    []*Seat
 	posToAct int
 	cost     int
-	err      error
 }
 
 func Blinds(button, small, big int) func(p *Pot) {
@@ -68,6 +73,7 @@ func Blinds(button, small, big int) func(p *Pot) {
 				p.update()
 				p.contribute(p.SeatToAct(), blind, false)
 			}
+			p.update()
 		}
 	}
 }
@@ -107,6 +113,10 @@ func (p *Pot) Chips() int {
 	return total
 }
 
+func (p *Pot) Cost() int {
+	return p.cost
+}
+
 func (p *Pot) Seats() []*Seat {
 	return append([]*Seat{}, p.seats...)
 }
@@ -132,18 +142,78 @@ func (p *Pot) PossibleActions() []Action {
 	return []Action{Fold, Call, Raise}
 }
 
-func (p *Pot) Fold() *Pot {
-	p.SeatToAct().Folded = true
+func (p *Pot) Fold() error {
+	if err := p.checkAction(Fold); err != nil {
+		return err
+	}
+	seat := p.SeatToAct()
+	seat.Acted = true
+	seat.Folded = true
 	p.update()
-	return p
+	return nil
 }
 
-func (p *Pot) Check() {
-	if includes(p.PossibleActions(), Check) == false {
-
+func (p *Pot) Check() error {
+	if err := p.checkAction(Check); err != nil {
+		return err
 	}
-	p.SeatToAct().Folded = true
+	seat := p.SeatToAct()
+	seat.Acted = true
 	p.update()
+	return nil
+}
+
+func (p *Pot) Call() error {
+	if err := p.checkAction(Call); err != nil {
+		return err
+	}
+	seat := p.SeatToAct()
+	p.contribute(seat, p.cost, true)
+	p.update()
+	return nil
+}
+
+func (p *Pot) Bet(chips int) error {
+	if err := p.checkAction(Bet); err != nil {
+		return err
+	}
+	for _, seat := range p.seats {
+		seat.Acted = false
+	}
+	seat := p.SeatToAct()
+	p.contribute(seat, chips, true)
+	p.update()
+	return nil
+}
+
+func (p *Pot) Raise(chips int) error {
+	if err := p.checkAction(Raise); err != nil {
+		return err
+	}
+	for _, seat := range p.seats {
+		seat.Acted = false
+	}
+	seat := p.SeatToAct()
+	p.contribute(seat, p.cost+chips, true)
+	p.update()
+	return nil
+}
+
+func (p *Pot) AllIn() error {
+	seat := p.SeatToAct()
+	return p.Raise(seat.Stack - p.cost)
+}
+
+func (p *Pot) checkAction(a Action) error {
+	seat := p.SeatToAct()
+	if seat == nil {
+		return errors.New("pot: no actions are available")
+	}
+	possible := p.PossibleActions()
+	if includes(possible, a) == false {
+		return fmt.Errorf("pot: seat %d can't %s, available actions are %s", seat.Pos, a, possible)
+	}
+	return nil
 }
 
 func (p *Pot) update() {
@@ -191,19 +261,7 @@ func (p *Pot) contribute(seat *Seat, chips int, acted bool) {
 	seat.Acted = acted
 }
 
-func (p *Pot) copy() *Pot {
-	seats := []*Seat{}
-	for _, seat := range p.seats {
-		seats = append(seats, seat.copy())
-	}
-	return &Pot{
-		seats:    seats,
-		posToAct: p.posToAct,
-		cost:     cost,
-	}
-}
-
-func includes(actions []pot.Action, include ...pot.Action) bool {
+func includes(actions []Action, include ...Action) bool {
 	for _, a1 := range include {
 		found := false
 		for _, a2 := range actions {

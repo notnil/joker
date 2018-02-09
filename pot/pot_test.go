@@ -70,6 +70,9 @@ func TestBlinds(t *testing.T) {
 	if stack != 98 {
 		t.Fatalf("expected stack size of %d but got %d", 98, stack)
 	}
+	if p.SeatToAct().Pos != 0 {
+		t.Fatalf("expected starting pos of %d but got %d", 0, p.SeatToAct().Pos)
+	}
 }
 
 func TestBlindsTwoSeats(t *testing.T) {
@@ -86,6 +89,9 @@ func TestBlindsTwoSeats(t *testing.T) {
 	if stack != 99 {
 		t.Fatalf("expected stack size of %d but got %d", 99, stack)
 	}
+	if p.SeatToAct().Pos != 0 {
+		t.Fatalf("expected starting pos of %d but got %d", 0, p.SeatToAct().Pos)
+	}
 }
 
 func TestAllIn(t *testing.T) {
@@ -95,13 +101,14 @@ func TestAllIn(t *testing.T) {
 		2: 100,
 	}
 	p := pot.New(stacks, pot.Blinds(0, 1, 2))
-	chips := p.Chips()
-	if chips != 3 {
-		t.Fatalf("expected pot size of %d but got %d", 3, chips)
+	if err := p.AllIn(); err != nil {
+		t.Fatal(err)
 	}
-	stack := p.Seats()[0].Stack
-	if stack != 99 {
-		t.Fatalf("expected stack size of %d but got %d", 99, stack)
+	if p.Chips() != 13 {
+		t.Fatalf("expected pot size of %d but got %d", 13, p.Chips())
+	}
+	if p.Cost() != 9 {
+		t.Fatalf("expected pot cost of %d but got %d", 9, p.Cost())
 	}
 }
 
