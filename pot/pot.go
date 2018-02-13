@@ -56,13 +56,14 @@ type Pot struct {
 	seats    []*Seat
 	posToAct int
 	cost     int
+	bringIn  bool
+	button   int
 }
 
-func Blinds(button, small, big int) func(p *Pot) {
+func Blinds(blinds []int) func(p *Pot) {
 	// TODO catch invalid button
 	return func(p *Pot) {
-		p.posToAct = button
-		blinds := []int{small, big}
+		p.posToAct = p.button
 		if len(p.seats) == 2 {
 			for _, blind := range blinds {
 				p.contribute(p.SeatToAct(), blind, false)
@@ -78,6 +79,14 @@ func Blinds(button, small, big int) func(p *Pot) {
 	}
 }
 
+func BringIn(pos int, min int) func(p *Pot) {
+	return func(p *Pot) {
+		p.posToAct = pos
+		p.cost = min
+		p.bringIn = true
+	}
+}
+
 func Ante(chips int) func(p *Pot) {
 	return func(p *Pot) {
 		for _, seat := range p.seats {
@@ -86,8 +95,8 @@ func Ante(chips int) func(p *Pot) {
 	}
 }
 
-func New(stacks map[int]int, opts ...func(*Pot)) *Pot {
-	// TODO catch only one seat given
+func New(stacks map[int]int, button int, opts ...func(*Pot)) *Pot {
+	// TODO throw error for <= 1 seats
 	seats := []*Seat{}
 	for seat, stack := range stacks {
 		seats = append(seats, &Seat{Pos: seat, Stack: stack})
@@ -96,6 +105,7 @@ func New(stacks map[int]int, opts ...func(*Pot)) *Pot {
 		return seats[i].Pos < seats[j].Pos
 	})
 	p := &Pot{
+		button:   button,
 		seats:    seats,
 		posToAct: seats[0].Pos,
 	}
@@ -132,6 +142,9 @@ func (p *Pot) PossibleActions() []Action {
 	seat := p.SeatToAct()
 	if seat == nil {
 		return []Action{}
+	}
+	if p.bringIn {
+		return []Action{Call, Raise}
 	}
 	if p.cost == 0 {
 		return []Action{Fold, Check, Bet}
@@ -201,7 +214,123 @@ func (p *Pot) Raise(chips int) error {
 
 func (p *Pot) AllIn() error {
 	seat := p.SeatToAct()
-	return p.Raise(seat.Stack - p.cost)
+	if includes(p.PossibleActions(), Raise) {
+		return p.Raise(seat.Stack - p.cost)
+	}
+	return p.Bet(seat.Stack)
+}
+
+func (p *Pot) NextRound() {
+	for _, seat := range p.seats {
+		seat.Acted = false
+	}
+	p.posToAct = p.button
+	p.update()
+}
+
+func (p *Pot) NextRoundWithPosition(pos int) {
+	// TODO check if valid
+	for _, seat := range p.seats {
+		seat.Acted = false
+	}
+	p.posToAct = pos - 1
+	p.update()
+}
+
+// Share is the rights a winner has to the pot.
+type Share int
+
+const (
+	WonUncontested Share = iota
+	WonHigh
+	WonLow
+	SplitHigh
+	SplitLow
+)
+
+// A Payout is a player's winning result from a showdown.
+type Payout struct {
+	Pos   int
+	Chips int
+	Share Share
+}
+
+// Payout divides the pot among the winning high and low seats.
+func (p *Pot) Payout(highs, lows [][]int) []*Payout {
+	payouts := []*Payout{}
+	for total, seats := range p.sidePots() {
+		highSeats := p.findPayoutSeats(highs, seats)
+		lowSeats := p.findPayoutSeats(lows, seats)
+		splitTotal := total
+		splitRemainder := 0
+		if len(highSeats) > 0 && len(lowSeats) > 0 {
+			splitTotal = total / 2
+			splitRemainder = total % 2
+		}
+		payouts = append(payouts, p.divideTotal(highSeats, splitTotal+splitRemainder, WonHigh, SplitHigh)...)
+		payouts = append(payouts, p.divideTotal(lowSeats, splitTotal, WonLow, SplitLow)...)
+	}
+	return payouts
+}
+
+func (p *Pot) divideTotal(seats []*Seat, total int, singular, plural Share) []*Payout {
+	num := len(seats)
+	if num == 0 {
+		return []*Payout{}
+	}
+	if num == 1 {
+		po := &Payout{
+			Pos:   seats[0].Pos,
+			Chips: total,
+			Share: singular,
+		}
+		return []*Payout{po}
+	}
+	base := total / num
+	remainder := total % num
+	max := -1
+	for _, seat := range seats {
+		if seat.Pos > max {
+			max = seat.Pos
+		}
+	}
+	cp := append([]*Seat{}, seats...)
+	sort.Slice(cp, func(i, j int) bool {
+		orderI := (cp[i].Pos - p.button) % max
+		orderJ := (cp[j].Pos - p.button) % max
+		return orderI < orderJ
+	})
+	payouts := []*Payout{}
+	for i := 0; i < num; i++ {
+		amount := base
+		if i < remainder {
+			amount++
+		}
+		po := &Payout{
+			Pos:   cp[i].Pos,
+			Chips: amount,
+			Share: plural,
+		}
+		payouts = append(payouts, po)
+	}
+	return payouts
+}
+
+func (p *Pot) findPayoutSeats(rankings [][]int, seats []*Seat) []*Seat {
+	for _, rank := range rankings {
+		found := []*Seat{}
+		for _, pos := range rank {
+			for _, seat := range seats {
+				if seat.Pos == pos {
+					found = append(found, seat)
+				}
+			}
+		}
+		if len(found) > 0 {
+			return found
+		}
+	}
+	return []*Seat{}
 }
 
 func (p *Pot) checkAction(a Action) error {
@@ -219,6 +348,7 @@ func (p *Pot) checkAction(a Action) error {
 func (p *Pot) update() {
 	p.moveAction()
 	p.setCost()
+	p.bringIn = false
 }
 
 func (p *Pot) moveAction() {
@@ -274,168 +404,43 @@ func includes(actions []Action, include ...Action) bool {
 	return true
 }
 
-// // A Share is the share of the pot a seat is entitled to.
-// type Share struct {
-// 	Chips int
-// 	Type  ShareType
-// }
+// sidePotAmounts finds the side pot totals seats are eligible for
+func (p *Pot) sidePots() map[int][]*Seat {
+	amounts := []int{}
+	for _, seat := range p.seats {
+		if seat.Contributed != 0 && seat.Folded == false {
+			amounts = append(amounts, seat.Contributed)
+		}
+	}
+	amounts = dedupe(amounts)
+	sort.IntSlice(amounts).Sort()
+	sidePots := map[int][]*Seat{}
+	for i, a := range amounts {
+		prev := 0
+		if i != 0 {
+			prev = amounts[i]
+		}
+		total := 0
+		in := []*Seat{}
+		for _, seat := range p.seats {
+			if seat.Contributed >= a {
+				in = append(in, seat)
+				total += a - prev
+			}
+		}
+		sidePots[total] = in
+	}
+	return sidePots
+}
 
-// // String returns a string useful for debugging.
-// func (s *Share) String() string {
-// 	const format = "%s for %d chips"
-// 	return fmt.Sprintf(format, s.Type, s.Chips)
-// }
-
-// type Pot struct {
-// 	contributions map[int]int
-// 	in            map[int]bool
-// 	chips         int
-// 	err           error
-// }
-
-// // New returns a pot.
-// func New(seats []int) *Pot {
-// 	c := map[int]int{}
-// 	in := map[int]bool{}
-// 	for _, seat := range seats {
-// 		c[seat] = 0
-// 		in[seat] = true
-// 	}
-// 	return &Pot{contributions: c, in: map[int]bool{}, chips: 0}
-// }
-
-// // Error returns an error if the pot is in an invalid state
-// func (p *Pot) Error() error {
-// 	return p.err
-// }
-
-// // Chips returns the number of chips in the pot.
-// func (p *Pot) Chips() int {
-// 	return p.chips
-// }
-
-// // Outstanding returns the amount required for a seat to call the
-// // largest current bet or raise.
-// func (p *Pot) Outstanding(seat int) int {
-// 	most := 0
-// 	for _, chips := range p.contributions {
-// 		if chips > most {
-// 			most = chips
-// 		}
-// 	}
-// 	return most - p.contributions[seat]
-// }
-
-// // Contribute contributes the chip amount from the seat given
-// func (p *Pot) Contribute(seat, chips int, allin bool) *Pot {
-// 	p.checkSeats([]int{seat})
-// }
-
-// // Withdrawl withdrawls the seat given from the pot.  This places
-// // the seat out of contention for shares of the pot.
-// func (p *Pot) Withdrawl(seat int) {
-// 	p.checkSeats([]int{seat})
-// 	p.in[seat] = false
-// }
-
-// // Fold withdrawls the seat given from the pot.  This
-// func (p *Pot) Contested() bool {
-// 	p.checkSeats([]int{seat})
-// 	p.in[seat] = false
-// }
-
-// // Showdown takes the high and low hands to produce pot results.
-// // Highs and lows represent showdowns for high and low portions of
-// // the pot.  If the pot isn't split only use highs.  Highs and lows
-// // should be order in descreasing order of claim to the pot.
-// func (p *Pot) Showdown(highs, lows []int, button int) *Pot {
-// 	// defend against invalid claims
-// 	p.checkSeats(append(highs, lows...))
-// 	// don't continue if the pot is invalid
-// 	if p.err != nil {
-// 		return p
-// 	}
-// }
-
-// // sidePots forms an array of side pots including the main pot
-// func (p *Pot) sidePots() []*Pot {
-// 	// get site pot contribution amounts
-// 	amounts := p.sidePotAmounts()
-// 	pots := []*Pot{}
-// 	for i, a := range amounts {
-// 		side := &Pot{
-// 			contributions: map[int]int{},
-// 		}
-// 		last := 0
-// 		if i != 0 {
-// 			last = amounts[i-1]
-// 		}
-// 		for seat, chips := range p.contributions {
-// 			if chips > last && chips >= a {
-// 				side.contributions[seat] = a - last
-// 			} else if chips > last && chips < a {
-// 				side.contributions[seat] = chips - last
-// 			}
-// 		}
-// 		pots = append(pots, side)
-// 	}
-// 	return pots
-// }
-
-// // sidePotAmounts finds the contribution divisions for side pots
-// func (p *Pot) sidePotAmounts() []int {
-// 	amounts := []int{}
-// 	for seat, chips := range p.contributions {
-// 		if chips == 0 {
-// 			delete(p.contributions, seat)
-// 		} else {
-// 			found := false
-// 			for _, a := range amounts {
-// 				found = found || a == chips
-// 			}
-// 			if !found {
-// 				amounts = append(amounts, chips)
-// 			}
-// 		}
-// 	}
-// 	sort.IntSlice(amounts).Sort()
-// 	return amounts
-// }
-
-// func (p *Pot) seats() []int {
-// 	seats := []int{}
-// 	for seat := range p.contributions {
-// 		seats = append(seats, seat)
-// 	}
-// 	return seats
-// }
-
-// func (p *Pot) checkSeats(seats []int) {
-// 	for _, seat := range seats {
-// 		if p.in[seat] == false {
-// 			p.err = errors.New("pot: seat attempted showdown but not in pot")
-// 			return
-// 		}
-// 	}
-// }
-
-// func (p *Pot) seatsRemaining() int {
-// 	count := 0
-// 	for _, in := range p.in {
-// 		if in {
-// 			count++
-// 		}
-// 	}
-// 	return count
-// }
-
-// func combineResults(results ...map[int][]*Result) map[int][]*Result {
-// 	combined := map[int][]*Result{}
-// 	for _, m := range results {
-// 		for k, v := range m {
-// 			s := append(combined[k], v...)
-// 			combined[k] = s
-// 		}
-// 	}
-// 	return combined
-// }
+func dedupe(a []int) []int {
+	m := map[int]bool{}
+	for _, i := range a {
+		m[i] = true
+	}
+	out := []int{}
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}

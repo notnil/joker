@@ -6,25 +6,13 @@ import (
 	"github.com/notnil/joker/pot"
 )
 
-func TestAPI(t *testing.T) {
-	// stacks := map[int]int{
-	// 	0: 100,
-	// 	1: 50,
-	// 	2: 75,
-	// }
-	// holdem
-	// pot.New(stacks, pot.Button(2), pot.Ante(1), pot.Blinds(2, 5))
-	// stud
-	// pot.New(stacks, pot.Ante(1)).Ante(1).SetPos(1).Bet(5).Raise(5)
-}
-
 func TestNewPot(t *testing.T) {
 	stacks := map[int]int{
 		0: 100,
 		1: 100,
 		2: 100,
 	}
-	p := pot.New(stacks)
+	p := pot.New(stacks, 0)
 	seat := p.SeatToAct()
 	if seat == nil {
 		t.Fatal("expected to find seat to act")
@@ -44,7 +32,7 @@ func TestAnte(t *testing.T) {
 		1: 100,
 		2: 100,
 	}
-	p := pot.New(stacks, pot.Ante(2))
+	p := pot.New(stacks, 0, pot.Ante(2))
 	chips := p.Chips()
 	if chips != 6 {
 		t.Fatalf("expected pot size of %d but got %d", 6, chips)
@@ -61,7 +49,7 @@ func TestBlinds(t *testing.T) {
 		1: 100,
 		2: 100,
 	}
-	p := pot.New(stacks, pot.Blinds(0, 1, 2))
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
 	chips := p.Chips()
 	if chips != 3 {
 		t.Fatalf("expected pot size of %d but got %d", 3, chips)
@@ -75,12 +63,31 @@ func TestBlinds(t *testing.T) {
 	}
 }
 
+func TestBringIn(t *testing.T) {
+	stacks := map[int]int{
+		0: 100,
+		1: 100,
+		2: 100,
+	}
+	p := pot.New(stacks, 0, pot.BringIn(0, 2))
+	if cost := p.Cost(); cost != 2 {
+		t.Fatalf("expected cost of %d but got %d", 2, cost)
+	}
+	expected := []pot.Action{pot.Call, pot.Raise}
+	if includes(p.PossibleActions(), expected...) == false {
+		t.Fatalf("expected actions to be %v but were %v", expected, p.PossibleActions())
+	}
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestBlindsTwoSeats(t *testing.T) {
 	stacks := map[int]int{
 		0: 100,
 		1: 100,
 	}
-	p := pot.New(stacks, pot.Blinds(0, 1, 2))
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
 	chips := p.Chips()
 	if chips != 3 {
 		t.Fatalf("expected pot size of %d but got %d", 3, chips)
@@ -100,7 +107,7 @@ func TestAllIn(t *testing.T) {
 		1: 100,
 		2: 100,
 	}
-	p := pot.New(stacks, pot.Blinds(0, 1, 2))
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
 	if err := p.AllIn(); err != nil {
 		t.Fatal(err)
 	}
@@ -109,6 +116,107 @@ func TestAllIn(t *testing.T) {
 	}
 	if p.Cost() != 9 {
 		t.Fatalf("expected pot cost of %d but got %d", 9, p.Cost())
+	}
+}
+
+func TestBasicHoldem(t *testing.T) {
+	stacks := map[int]int{
+		0: 100,
+		1: 100,
+		2: 100,
+	}
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Check(); err != nil {
+		t.Fatal(err)
+	}
+	if p.SeatToAct() != nil {
+		t.Fatal("failed to recognize end of betting")
+	}
+	p.NextRound()
+	if p.SeatToAct() == nil || p.SeatToAct().Pos != 1 {
+		t.Fatal("failed reset button")
+	}
+	if err := p.Bet(5); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Raise(5); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+	if p.SeatToAct() != nil {
+		t.Fatal("failed to recognize end of betting")
+	}
+	p.NextRound()
+	if err := p.AllIn(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Call(); err != nil {
+		t.Fatal(err)
+	}
+	if p.SeatToAct() != nil {
+		t.Fatal("failed to recognize end of betting")
+	}
+	p.NextRound()
+	if p.SeatToAct() != nil {
+		t.Fatal("failed to recognize that no betting can occur in round")
+	}
+}
+
+func TestPayout(t *testing.T) {
+	stacks := map[int]int{
+		0: 100,
+		1: 100,
+		2: 100,
+	}
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
+	p.Call()
+	p.Call()
+	hi := [][]int{[]int{1}}
+	payouts := p.Payout(hi, nil)
+	if len(payouts) != 1 {
+		t.Fatal("invalid number of payouts")
+	}
+	if payouts[0].Pos != 1 {
+		t.Fatal("wrong player won")
+	}
+	if payouts[0].Share != pot.WonHigh {
+		t.Fatal("player should have won high")
+	}
+}
+
+func TestSplitPayout(t *testing.T) {
+	stacks := map[int]int{
+		0: 100,
+		1: 100,
+		2: 100,
+	}
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
+	p.Call()
+	p.Call()
+	hi := [][]int{[]int{1, 2}}
+	payouts := p.Payout(hi, nil)
+	if len(payouts) != 2 {
+		t.Fatal("invalid number of payouts")
+	}
+	if payouts[0].Share != pot.SplitHigh {
+		t.Fatal("player should have split high")
+	}
+	if payouts[0].Chips != 3 {
+		t.Fatal("player should have split high")
 	}
 }
 
