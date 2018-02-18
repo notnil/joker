@@ -1,10 +1,9 @@
-package game
+package deal
 
 import (
 	"testing"
 
 	"github.com/notnil/joker/hand"
-
 	"github.com/notnil/joker/jokertest"
 )
 

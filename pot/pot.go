@@ -248,11 +248,38 @@ const (
 	SplitLow
 )
 
+var (
+	shareStrs = []string{"WonUncontested", "WonHigh", "WonLow", "SplitHigh", "SplitLow"}
+)
+
+func (s Share) String() string {
+	return shareStrs[s]
+}
+
+func (s Share) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+func (s *Share) UnmarshalText(text []byte) error {
+	for i, str := range shareStrs {
+		if string(text) == str {
+			*s = Share(i)
+			return nil
+		}
+	}
+	return errors.New("pot: unrecognized share " + string(text))
+}
+
 // A Payout is a player's winning result from a showdown.
 type Payout struct {
 	Pos   int
 	Chips int
 	Share Share
+}
+
+func (p *Payout) String() string {
+	b, _ := json.Marshal(p)
+	return string(b)
 }
 
 // Payout divides the pot among the winning high and low seats.
@@ -418,7 +445,7 @@ func (p *Pot) sidePots() map[int][]*Seat {
 	for i, a := range amounts {
 		prev := 0
 		if i != 0 {
-			prev = amounts[i]
+			prev = amounts[i-1]
 		}
 		total := 0
 		in := []*Seat{}

@@ -1,9 +1,46 @@
-package game
+package deal
 
 import (
 	"github.com/notnil/joker/hand"
 	"github.com/notnil/joker/util"
 )
+
+type ranker struct {
+	e handEvaluator
+	s hand.Sorting
+	o hand.Ordering
+}
+
+func (r *ranker) hands(holeCards map[int][]hand.Card, board []hand.Card) map[int]*hand.Hand {
+	m := map[int]*hand.Hand{}
+	for seat, hc := range holeCards {
+		h := r.e.EvaluateHand(hc, board)
+		m[seat] = h
+	}
+	return m
+}
+
+func (r *ranker) rank(hands map[int]*hand.Hand) [][]int {
+	m := map[*hand.Hand]int{}
+	order := []*hand.Hand{}
+	for seat, h := range hands {
+		if h != nil {
+			m[h] = seat
+			order = append(order, h)
+		}
+	}
+	order = hand.Sort(r.s, r.o, order...)
+	results := [][]int{}
+	for i, h := range order {
+		seat := m[h]
+		if i == 0 || order[i-1].CompareTo(h) != 0 {
+			results = append(results, []int{seat})
+			continue
+		}
+		results[len(results)-1] = append(results[len(results)-1], seat)
+	}
+	return results
+}
 
 type handEvaluator interface {
 	EvaluateHand(holeCards []hand.Card, board []hand.Card) *hand.Hand

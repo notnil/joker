@@ -3,13 +3,13 @@ package jokertest_test
 import (
 	"testing"
 
-	"github.com/loganjspears/joker/hand"
-	"github.com/loganjspears/joker/jokertest"
+	"github.com/notnil/joker/hand"
+	"github.com/notnil/joker/jokertest"
 )
 
 func TestDeck(t *testing.T) {
 	cards := jokertest.Cards("Qh", "Ks", "4s")
-	actual := []*hand.Card{hand.QueenHearts, hand.KingSpades, hand.FourSpades}
+	actual := []hand.Card{hand.QueenHearts, hand.KingSpades, hand.FourSpades}
 	deck := jokertest.Dealer(cards).Deck()
 
 	for i := 0; i < len(actual); i++ {

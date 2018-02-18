@@ -220,6 +220,26 @@ func TestSplitPayout(t *testing.T) {
 	}
 }
 
+func TestSplitLowPayout(t *testing.T) {
+	stacks := map[int]int{
+		0: 10,
+		1: 20,
+		2: 30,
+	}
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
+	p.AllIn()
+	p.AllIn()
+	p.Call()
+	hi := [][]int{[]int{0, 2}}
+	low := [][]int{[]int{0}}
+	payouts := p.Payout(hi, low)
+	if len(payouts) != 4 {
+		t.Fatal("invalid number of payouts")
+	}
+	// TODO equal this
+	// [{"Pos":0,"Chips":8,"Share":"SplitHigh"} {"Pos":2,"Chips":7,"Share":"SplitHigh"} {"Pos":0,"Chips":15,"Share":"WonLow"} {"Pos":2,"Chips":20,"Share":"WonHigh"}]
+}
+
 func includes(actions []pot.Action, include ...pot.Action) bool {
 	for _, a1 := range include {
 		found := false
