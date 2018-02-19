@@ -97,16 +97,16 @@ const (
 func (holdemUpdater) Update(d *Deal) {
 	switch d.round {
 	case preflop:
-		d.pot = pot.New(d.startingStacks, d.button, pot.Blinds([]int{1, 2}))
+		d.pot = pot.New(d.config.Stacks, d.config.Button, pot.Blinds(d.config.Blinds))
 		for _, seat := range d.pot.Seats() {
-			d.holeCards[seat.Pos] = d.deck.PopMulti(2)
+			d.holeCards[seat.Pos] = d.config.Deck.PopMulti(2)
 		}
 	case flop:
 		d.pot.NextRound()
-		d.board = d.deck.PopMulti(3)
+		d.board = d.config.Deck.PopMulti(3)
 	case turn, river:
 		d.pot.NextRound()
-		d.board = append(d.board, d.deck.Pop())
+		d.board = append(d.board, d.config.Deck.Pop())
 	case showdown:
 		r := &ranker{e: holdemHandEvaluator{}, s: hand.SortingHigh, o: hand.DESC}
 		d.hands = r.hands(d.holeCards, d.board)

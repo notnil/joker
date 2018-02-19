@@ -8,39 +8,42 @@ import (
 )
 
 type Deal struct {
-	variant        Variant
-	deck           *hand.Deck
-	board          []hand.Card
-	holeCards      map[int][]hand.Card
-	pot            *pot.Pot
-	round          int
-	startingStacks map[int]int
-	button         int
-	payouts        []*pot.Payout
-	hands          map[int]*hand.Hand
+	config    Config
+	pot       *pot.Pot
+	round     int
+	board     []hand.Card
+	holeCards map[int][]hand.Card
+	payouts   []*pot.Payout
+	hands     map[int]*hand.Hand
 }
 
-func New(v Variant, deck *hand.Deck, startingStacks map[int]int, button int) *Deal {
+type Config struct {
+	Variant Variant
+	Deck    *hand.Deck
+	Button  int
+	Stacks  map[int]int
+	Blinds  []int
+	Ante    int
+}
+
+func New(c Config) *Deal {
 	d := &Deal{
-		variant:        v,
-		deck:           deck,
-		board:          []hand.Card{},
-		holeCards:      map[int][]hand.Card{},
-		pot:            nil,
-		round:          0,
-		startingStacks: startingStacks,
-		button:         button,
+		config:    c,
+		board:     []hand.Card{},
+		holeCards: map[int][]hand.Card{},
+		pot:       nil,
+		round:     0,
 	}
-	d.variant.getUpdater().Update(d)
+	d.config.Variant.getUpdater().Update(d)
 	return d
 }
 
 func (d *Deal) Variant() Variant {
-	return d.variant
+	return d.config.Variant
 }
 
 func (d *Deal) Deck() *hand.Deck {
-	return &hand.Deck{Cards: append([]hand.Card{}, d.deck.Cards...)}
+	return &hand.Deck{Cards: append([]hand.Card{}, d.config.Deck.Cards...)}
 }
 
 func (d *Deal) Board() []hand.Card {
@@ -99,13 +102,28 @@ func (d *Deal) Action(a pot.Action, chips int) error {
 		if err := d.pot.Raise(chips); err != nil {
 			return err
 		}
+	case pot.AllIn:
+		if err := d.pot.AllIn(); err != nil {
+			return err
+		}
 	default:
 		return errors.New("deal: unknown action")
 	}
 	if d.pot.SeatToAct() == nil {
-		// TODO check if pot is uncontested or everyone is all-in
+		// payout player and end deal if there is only one player
+		if payout := d.pot.Uncontested(); payout != nil {
+			d.payouts = []*pot.Payout{payout}
+			return nil
+		}
 		d.round++
-		d.variant.getUpdater().Update(d)
+		d.config.Variant.getUpdater().Update(d)
+		// if everyone is all-in continue till payouts
+		if d.pot.SeatToAct() == nil {
+			for d.payouts == nil {
+				d.round++
+				d.config.Variant.getUpdater().Update(d)
+			}
+		}
 	}
 	return nil
 }

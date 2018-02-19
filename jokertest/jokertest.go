@@ -14,7 +14,6 @@ const (
 	deck5Str = "5♥ 6♥ 6♣ 3♠ T♣ Q♣ 5♦ A♦ 5♣ J♦ 9♦ 9♣ A♣ 8♠ K♥ 8♦ 7♣ K♣ T♦ 2♥ Q♦ 5♠ Q♥ K♠ 8♣ 4♥ 3♣ K♦ 2♣ T♠ T♥ 8♥ 4♣ Q♠ 4♦ A♥ 3♦ 6♠ 9♠ A♠ 2♠ 7♠ 2♦ 9♥ 4♠ 6♦ 3♥ J♣ 7♦ J♥ 7♥ J♠"
 )
 
-// Deck1 = "J♦ 7♥ 2♥ 3♣ 5♥ 5♦ 2♦ 3♦ Q♦ 9♠ A♣ 9♣ T♠ 7♦ J♥ 4♦ A♦ J♣ K♣ 9♥ T♦ 2♠ 6♣ 2♣ 6♦ 7♣ 8♣ K♠ 8♠ 6♠ 5♠ 6♥ Q♠ 5♣ Q♣ Q♥ 4♣ 3♠ A♠ 8♦ K♦ 9♦ 4♥ K♥ 8♥ T♥ 3♥ A♥ T♣ J♠ 7♠ 4♠"
 func Deck1() *hand.Deck {
 	return parseDeck(deck1Str)
 }

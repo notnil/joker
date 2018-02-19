@@ -198,6 +198,37 @@ func TestPayout(t *testing.T) {
 	}
 }
 
+func TestUncontested(t *testing.T) {
+	stacks := map[int]int{
+		0: 100,
+		1: 100,
+		2: 100,
+	}
+	p := pot.New(stacks, 0, pot.Blinds([]int{1, 2}))
+	if err := p.Fold(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Fold(); err != nil {
+		t.Fatal(err)
+	}
+	if seat := p.SeatToAct(); seat != nil {
+		t.Fatal("should not have seat to act when everyone else folds")
+	}
+	payout := p.Uncontested()
+	if payout == nil {
+		t.Fatal("should have payout")
+	}
+	if payout.Pos != 2 {
+		t.Fatal("pos two should have won")
+	}
+	if payout.Chips != 3 {
+		t.Fatal("pos two should have won 3 chips")
+	}
+	if payout.Share != pot.WonUncontested {
+		t.Fatal("pos two should have won uncontested")
+	}
+}
+
 func TestSplitPayout(t *testing.T) {
 	stacks := map[int]int{
 		0: 100,

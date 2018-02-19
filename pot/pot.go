@@ -19,9 +19,10 @@ const (
 	Call
 	Bet
 	Raise
+	AllIn
 )
 
-var actionStrs = []string{"Fold", "Check", "Call", "Bet", "Raise"}
+var actionStrs = []string{"Fold", "Check", "Call", "Bet", "Raise", "AllIn"}
 
 func (a Action) String() string {
 	return actionStrs[a]
@@ -144,15 +145,15 @@ func (p *Pot) PossibleActions() []Action {
 		return []Action{}
 	}
 	if p.bringIn {
-		return []Action{Call, Raise}
+		return []Action{Call, Raise, AllIn}
 	}
 	if p.cost == 0 {
-		return []Action{Fold, Check, Bet}
+		return []Action{Fold, Check, Bet, AllIn}
 	}
 	if p.cost >= seat.Stack {
 		return []Action{Fold, Call}
 	}
-	return []Action{Fold, Call, Raise}
+	return []Action{Fold, Call, Raise, AllIn}
 }
 
 func (p *Pot) Fold() error {
@@ -213,6 +214,9 @@ func (p *Pot) Raise(chips int) error {
 }
 
 func (p *Pot) AllIn() error {
+	if err := p.checkAction(AllIn); err != nil {
+		return err
+	}
 	seat := p.SeatToAct()
 	if includes(p.PossibleActions(), Raise) {
 		return p.Raise(seat.Stack - p.cost)
@@ -235,6 +239,18 @@ func (p *Pot) NextRoundWithPosition(pos int) {
 	}
 	p.posToAct = pos - 1
 	p.update()
+}
+
+func (p *Pot) Uncontested() *Payout {
+	var stillIn *Seat
+	for _, seat := range p.seats {
+		if seat.Folded == false && stillIn == nil {
+			stillIn = seat
+		} else if seat.Folded == false {
+			return nil
+		}
+	}
+	return &Payout{Pos: stillIn.Pos, Chips: p.Chips(), Share: WonUncontested}
 }
 
 // Share is the rights a winner has to the pot.
@@ -284,6 +300,9 @@ func (p *Payout) String() string {
 
 // Payout divides the pot among the winning high and low seats.
 func (p *Pot) Payout(highs, lows [][]int) []*Payout {
+	if payout := p.Uncontested(); payout != nil {
+		return []*Payout{payout}
+	}
 	payouts := []*Payout{}
 	for total, seats := range p.sidePots() {
 		highSeats := p.findPayoutSeats(highs, seats)
@@ -298,6 +317,30 @@ func (p *Pot) Payout(highs, lows [][]int) []*Payout {
 		payouts = append(payouts, p.divideTotal(lowSeats, splitTotal, WonLow, SplitLow)...)
 	}
 	return payouts
+}
+
+type potJSON struct {
+	Seats    []*Seat `json:"seats"`
+	PosToAct int     `json:"posToAct"`
+	Cost     int     `json:"cost"`
+	BringIn  bool    `json:"bringIn"`
+	Button   int     `json:"button"`
+}
+
+func (p *Pot) MarshalJSON() ([]byte, error) {
+	m := &potJSON{
+		Seats:    p.seats,
+		PosToAct: p.posToAct,
+		Cost:     p.cost,
+		BringIn:  p.bringIn,
+		Button:   p.button,
+	}
+	return json.Marshal(m)
+}
+
+func (p *Pot) String() string {
+	b, _ := json.Marshal(p)
+	return string(b)
 }
 
 func (p *Pot) divideTotal(seats []*Seat, total int, singular, plural Share) []*Payout {
@@ -381,6 +424,9 @@ func (p *Pot) update() {
 func (p *Pot) moveAction() {
 	if p.posToAct == noPosToAct {
 		return
+	}
+	if p.Uncontested() != nil {
+		p.posToAct = noPosToAct
 	}
 	for i := 1; i < len(p.seats); i++ {
 		a := (p.posToAct + i) % len(p.seats)
