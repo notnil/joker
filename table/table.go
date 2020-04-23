@@ -289,20 +289,24 @@ func (t *Table) payout() {
 		})
 		// select winners who split pot if more than one
 		winners := []*Player{}
-		h1 := hands[pot.contesting[0]]
-		for _, seat := range pot.contesting {
-			h2 := hands[seat]
-			if h1.CompareTo(h2) != 0 {
-				break
+		if len(pot.contesting) == 1 {
+			winners = []*Player{pot.contesting[0]}
+		} else {
+			h1 := hands[pot.contesting[0]]
+			for _, seat := range pot.contesting {
+				h2 := hands[seat]
+				if h1.CompareTo(h2) != 0 {
+					break
+				}
+				winners = append(winners, seat)
 			}
-			winners = append(winners, seat)
+			// sort closest to the button for spare chips in split pot
+			sort.Slice(winners, func(i, j int) bool {
+				iDist := t.distanceFromButton(winners[i])
+				jDist := t.distanceFromButton(winners[j])
+				return iDist < jDist
+			})
 		}
-		// sort closest to the button for spare chips in split pot
-		sort.Slice(winners, func(i, j int) bool {
-			iDist := t.distanceFromButton(winners[i])
-			jDist := t.distanceFromButton(winners[j])
-			return iDist < jDist
-		})
 		// payout chips
 		for i, seat := range winners {
 			seat.Chips += pot.chips / len(winners)

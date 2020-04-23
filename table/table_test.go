@@ -50,6 +50,18 @@ var (
 			},
 			description: "full hand 1",
 		},
+		{
+			start: threePerson100Buyin(),
+			actions: []table.Action{
+				{table.Raise, 5},
+				{Type: table.Fold},
+				{Type: table.Fold},
+			},
+			condition: func(s table.State) bool {
+				return s.Seats[0].Chips == 97 && s.Seats[1].Chips == 101 && s.Seats[2].Chips == 99 && s.Round == table.PreFlop
+			},
+			description: "preflop folds",
+		},
 	}
 )
 
