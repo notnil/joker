@@ -1,10 +1,10 @@
-package table
+package holdem
 
 import (
 	"errors"
 	"sort"
 
-	"github.com/notnil/joker/hand"
+	"github.com/notnil/joker/pkg/hand"
 )
 
 var (
@@ -66,29 +66,12 @@ type PlayerInHand struct {
 	Cards  []hand.Card
 }
 
-func (h *Hand) Fold() error {
-	return h.Act(Action{Type: Fold})
-}
-
-func (h *Hand) Check() error {
-	return h.Act(Action{Type: Check})
-}
-
-func (h *Hand) Call() error {
-	return h.Act(Action{Type: Call})
-}
-
-func (h *Hand) Bet(chips int) error {
-	return h.Act(Action{Type: Bet, Chips: chips})
-}
-
-func (h *Hand) Raise(chips int) error {
-	return h.Act(Action{Type: Raise, Chips: chips})
-}
-
-func (h *Hand) AllIn() error {
-	return h.Act(Action{Type: AllIn})
-}
+func (h *Hand) Fold() error { return h.Act(Action{Type: Fold}) }
+func (h *Hand) Check() error { return h.Act(Action{Type: Check}) }
+func (h *Hand) Call() error { return h.Act(Action{Type: Call}) }
+func (h *Hand) Bet(chips int) error { return h.Act(Action{Type: Bet, Chips: chips}) }
+func (h *Hand) Raise(chips int) error { return h.Act(Action{Type: Raise, Chips: chips}) }
+func (h *Hand) AllIn() error { return h.Act(Action{Type: AllIn}) }
 
 func (h *Hand) Act(a Action) error {
 	if h.Results != nil {
@@ -97,7 +80,6 @@ func (h *Hand) Act(a Action) error {
 	if !includes(h.LegalActions(), a.Type) {
 		return ErrInvalidAction
 	}
-	// TODO enforce limits, min bets
 	player := h.ActivePlayer()
 	owe := h.Pot.Owe(h.Active)
 	switch a.Type {
@@ -131,9 +113,7 @@ func (h *Hand) LegalActions() []ActionType {
 	return []ActionType{Fold, Call, Raise, AllIn}
 }
 
-func (h *Hand) ActivePlayer() *PlayerInHand {
-	return h.Seats[h.Active]
-}
+func (h *Hand) ActivePlayer() *PlayerInHand { return h.Seats[h.Active] }
 
 func (h *Hand) update() {
 	seat := h.nextToAct()
@@ -168,7 +148,6 @@ func (h *Hand) setupRound() {
 		h.contribute(h.Seats[sb], h.Table.config.Stakes.SmallBlind)
 		h.contribute(h.Seats[bb], h.Table.config.Stakes.BigBlind)
 		h.Active = h.Table.Next(bb)
-		// TODO bug w/ big blind having to go all and cost < bb
 	case Flop:
 		h.Board = h.Deck.PopMulti(3)
 		h.Active = h.Table.Next(h.Table.button)
@@ -204,7 +183,7 @@ func (h *Hand) calcResults() {
 	}
 	hands := map[int]*hand.Hand{}
 	for seat, player := range h.Seats {
-		// TODO omaha
+		// Texas Hold'em: 2 hole cards + 5 board cards evaluate best 5-card hand
 		hands[seat] = hand.New(append(player.Cards, h.Board...))
 	}
 	results := map[int][]HandResult{}
@@ -218,10 +197,10 @@ func (h *Hand) calcResults() {
 		})
 		// select winners who split pot if more than one
 		winners := []int{}
-		h1 := hands[elegible[0]]
-		for seat := range elegible {
-			h2 := hands[seat]
-			if h1.CompareTo(h2) != 0 {
+		best := hands[elegible[0]]
+		for _, seat := range elegible {
+			candidate := hands[seat]
+			if best.CompareTo(candidate) != 0 {
 				break
 			}
 			winners = append(winners, seat)
@@ -330,3 +309,4 @@ func includes(actions []ActionType, include ...ActionType) bool {
 	}
 	return true
 }
+

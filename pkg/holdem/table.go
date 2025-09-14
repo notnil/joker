@@ -1,10 +1,10 @@
-package table
+package holdem
 
 import (
 	"encoding/json"
 	"errors"
 
-	"github.com/notnil/joker/hand"
+	"github.com/notnil/joker/pkg/hand"
 )
 
 var (
@@ -12,13 +12,6 @@ var (
 	ErrInvalidSeat      = errors.New("invalid seat")
 	ErrSeatOccupied     = errors.New("seat occupied")
 	ErrInvalidBuyIn     = errors.New("invalid buyin")
-)
-
-type Variant int
-
-const (
-	TexasHoldem Variant = iota
-	OmahaHi
 )
 
 type Limit int
@@ -35,12 +28,11 @@ type Stakes struct {
 }
 
 type Config struct {
-	Size     int     `json:"size"`
-	BuyInMin int     `json:"buyInMin"`
-	BuyInMax int     `json:"buyInMax"`
-	Variant  Variant `json:"variant"`
-	Stakes   Stakes  `json:"stakes"`
-	Limit    Limit   `json:"limit"`
+	Size     int    `json:"size"`
+	BuyInMin int    `json:"buyInMin"`
+	BuyInMax int    `json:"buyInMax"`
+	Stakes   Stakes `json:"stakes"`
+	Limit    Limit  `json:"limit"`
 }
 
 type Player struct {
@@ -170,3 +162,4 @@ func (t *Table) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(js)
 }
+

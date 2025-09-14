@@ -1,28 +1,28 @@
-package table_test
+package holdem_test
 
 import (
 	"testing"
 
-	"github.com/notnil/joker/jokertest"
-	"github.com/notnil/joker/table"
+	"github.com/notnil/joker/pkg/holdem"
+	"github.com/notnil/joker/pkg/jokertest"
 )
 
 func TestTable(t *testing.T) {
 	dealer := jokertest.Dealer(jokertest.Deck1().Cards)
-	config := table.Config{
+	config := holdem.Config{
 		Size:     10,
 		BuyInMin: 100,
 		BuyInMax: 300,
 	}
-	tbl, err := table.New(config, nil, dealer)
+	tbl, err := holdem.New(config, nil, dealer)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p1 := &table.Player{
+	p1 := &holdem.Player{
 		ID:    "1",
 		Chips: 200,
 	}
-	p2 := &table.Player{
+	p2 := &holdem.Player{
 		ID:    "2",
 		Chips: 200,
 	}
@@ -41,3 +41,4 @@ func TestTable(t *testing.T) {
 		t.Fatalf("expected the next seat of %d to be %d but got %d", 1, 0, next1)
 	}
 }
+

@@ -1,4 +1,4 @@
-package table
+package holdem
 
 import (
 	"encoding/json"
@@ -136,3 +136,4 @@ func max(i, j int) int {
 	}
 	return j
 }
+

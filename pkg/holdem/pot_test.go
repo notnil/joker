@@ -1,13 +1,13 @@
-package table_test
+package holdem_test
 
 import (
 	"testing"
 
-	"github.com/notnil/joker/table"
+	"github.com/notnil/joker/pkg/holdem"
 )
 
 func TestPot(t *testing.T) {
-	pot := table.NewPot(map[int]int{
+	pot := holdem.NewPot(map[int]int{
 		0: 5, 1: 10, 2: 10, 3: 7,
 	})
 	pot.Remove(3)
@@ -24,3 +24,4 @@ func TestPot(t *testing.T) {
 		t.Fatalf("expected %d chips but got %d", 12, total2)
 	}
 }
+
