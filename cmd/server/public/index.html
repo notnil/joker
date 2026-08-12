@@ -235,21 +235,25 @@
     border: 1px solid #c4a35a; text-shadow: 0 1px 1px #000;
   }
 
-  .dealer {
+  .dealer, .blind-tag {
     position: absolute; z-index: 6; width: 26px; height: 26px; margin: -13px 0 0 -13px;
     border-radius: 50%;
-    background: radial-gradient(circle at 32% 28%, #fff3c0, #e6b422 55%, #b8860b);
-    color: #2a1c00; font-weight: 900; font-size: 13px;
+    font-weight: 900; font-size: 11px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 2px 4px #000; border: 1px solid #fff6;
   }
-  .blind-tag {
-    position: absolute; z-index: 6; font-size: 9px; font-weight: 800; color: #111;
-    background: #eee; padding: 1px 5px; border-radius: 8px;
-    transform: translate(-50%, -50%); box-shadow: 0 1px 2px #000;
+  .dealer {
+    background: radial-gradient(circle at 32% 28%, #fff3c0, #e6b422 55%, #b8860b);
+    color: #2a1c00; font-size: 13px;
   }
-  .blind-tag.bb { background: #6ec8ff; }
-  .blind-tag.sb { background: #ffc85a; }
+  .blind-tag.sb {
+    background: radial-gradient(circle at 32% 28%, #ffe08a, #f0b430 55%, #c48410);
+    color: #2a1c00;
+  }
+  .blind-tag.bb {
+    background: radial-gradient(circle at 32% 28%, #b8e4ff, #4aa8e0 55%, #1a6aa8);
+    color: #0a2438;
+  }
 
   #overlays {
     position: absolute; inset: 0; z-index: 5; pointer-events: none;
