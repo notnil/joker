@@ -149,6 +149,11 @@
     letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 1px 2px #000;
   }
   .board { display: flex; justify-content: center; gap: 12px; margin-top: 10px; min-height: 92px; }
+  .card.deal { animation: dealIn .38s ease-out; }
+  @keyframes dealIn {
+    from { transform: translateY(-16px) scale(.82); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
 
   .card {
     width: 58px; height: 82px;
@@ -231,6 +236,36 @@
   }
   .seat.folded { opacity: .4; filter: grayscale(.55); }
   .seat.allin .nameplate { border-color: #e23b3b; }
+  .seat.winner .avatar {
+    box-shadow: 0 0 0 4px #ffd24a, 0 0 22px #ffd24a;
+    animation: winpulse .7s ease-in-out infinite;
+  }
+  .seat.winner .nameplate {
+    border-color: #ffd24a;
+    box-shadow: 0 0 10px rgba(255,210,74,.7);
+    background: #2a2208;
+  }
+  @keyframes winpulse {
+    0%, 100% { box-shadow: 0 0 0 3px #ffd24a, 0 0 10px #ffd24a; }
+    50% { box-shadow: 0 0 0 6px #ffe9a0, 0 0 26px #ffd24a; }
+  }
+  .win-banner:empty { display: none; }
+  .win-banner {
+    position: absolute; left: 50%; top: 64%; z-index: 12;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(#3a3420, #16140c);
+    border: 2px solid #ffd24a; color: #ffd24a;
+    font: 800 20px Tahoma, sans-serif;
+    padding: 10px 24px; border-radius: 8px; text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,.55);
+    animation: winpop .4s ease-out;
+    pointer-events: none; white-space: nowrap;
+  }
+  .win-banner .sub { display: block; color: #f3f0e6; font-size: 13px; font-weight: 600; margin-top: 4px; }
+  @keyframes winpop {
+    from { transform: translate(-50%, -50%) scale(.55); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
   .nameplate {
     margin-top: 3px; background: #0a0a0a;
     border: 1px solid #c4a35a; border-radius: 3px;
@@ -374,6 +409,7 @@
       </div>
       <div id="overlays"></div>
       <div class="hero-cards" id="heroCards"></div>
+      <div id="winBanner" class="win-banner"></div>
     </div>
   </div>
   <div class="bar">
@@ -540,7 +576,12 @@ function render(s) {
   document.getElementById("street").textContent = s.street || "";
   const board = document.getElementById("board");
   board.innerHTML = "";
-  (s.board || []).forEach(c => board.appendChild(cardEl(c, false)));
+  (s.board || []).forEach((c, i) => {
+    const el = cardEl(c, false);
+    if (i >= prevBoardN) el.classList.add("deal");
+    board.appendChild(el);
+  });
+  prevBoardN = (s.board || []).length;
 
   const wrap = document.getElementById("overlays");
   wrap.innerHTML = "";
@@ -558,7 +599,8 @@ function render(s) {
       + (p.seat === s.hero ? " hero" : "")
       + (p.seat === s.toAct ? " to-act" : "")
       + (p.folded ? " folded" : "")
-      + (p.allIn ? " allin" : "");
+      + (p.allIn ? " allin" : "")
+      + (s.done && p.award > 0 ? " winner" : "");
     el.style.left = pos.l + "%";
     el.style.top = pos.t + "%";
     el.innerHTML = `
@@ -644,7 +686,23 @@ function render(s) {
   else mk("raise", "Raise to " + fmt(raiseTo), "btn-raise");
 
   document.getElementById("log").innerHTML = (s.log || []).slice().reverse().map(l => `<div>${l}</div>`).join("");
-  schedule(s);
+  const banner = document.getElementById("winBanner");
+  banner.innerHTML = s.done ? winnerBanner(s) : "";
+}
+
+function winnerBanner(s) {
+  const winners = (s.players || []).filter(p => p.award > 0);
+  if (!winners.length) return "";
+  if (winners.length === 1) {
+    const w = winners[0];
+    const name = w.seat === s.hero ? "You" : w.id;
+    const verb = w.seat === s.hero ? "win" : "wins";
+    const sub = w.hand ? w.hand : (s.street === "Fold" ? "everyone folded" : "");
+    return `${name} ${verb} ${fmt(w.award)}${sub ? `<span class="sub">${sub}</span>` : ""}`;
+  }
+  const names = winners.map(w => w.seat === s.hero ? "You" : w.id).join(" & ");
+  const total = winners.reduce((a, p) => a + p.award, 0);
+  return `Split pot  ${fmt(total)}<span class="sub">${names}</span>`;
 }
 
 function raiseLabel() {
@@ -682,13 +740,93 @@ document.querySelectorAll(".sizing .row button").forEach(b => {
   };
 });
 
-function schedule(s) {
-  clearTimeout(timer);
-  if (!s || s.error) return;
-  if (s.done) { timer = setTimeout(() => apply(jokerStep()), 1800); return; }
-  if (s.toAct >= 0 && s.toAct !== s.hero) timer = setTimeout(() => apply(jokerStep()), 500);
+let shownBoard = [];
+let prevBoardN = 0;
+let lastStreet = "";
+let pending = null;
+let animating = false;
+
+function nextStreetLen(n) {
+  if (n < 3) return 3;
+  if (n < 4) return 4;
+  if (n < 5) return 5;
+  return 5;
 }
-function apply(raw) { render(parse(raw)); }
+function streetLabel(n) {
+  if (n >= 5) return "River";
+  if (n >= 4) return "Turn";
+  if (n >= 3) return "Flop";
+  return "Preflop";
+}
+function maskRunout(s, board) {
+  return Object.assign({}, s, {
+    board: board,
+    street: streetLabel(board.length),
+    done: false,
+    legal: [],
+    toAct: -1,
+    players: (s.players || []).map(p => Object.assign({}, p, {
+      award: 0,
+      hand: "",
+      hole: p.seat === s.hero ? p.hole : undefined
+    }))
+  });
+}
+function present(s) {
+  clearTimeout(timer);
+  if (!s || s.error) {
+    render(s);
+    return;
+  }
+  const target = s.board || [];
+  const newHand = !s.done && target.length === 0 && (s.street === "Preflop" || !s.street);
+  if (newHand) {
+    shownBoard = [];
+    prevBoardN = 0;
+    lastStreet = s.street;
+    pending = null;
+    animating = false;
+    render(s);
+    schedule(s, false);
+    return;
+  }
+  const have = shownBoard.length;
+  if (target.length > nextStreetLen(have)) {
+    animating = true;
+    pending = s;
+    const n = nextStreetLen(have);
+    shownBoard = target.slice(0, n);
+    render(maskRunout(s, shownBoard));
+    timer = setTimeout(() => {
+      animating = false;
+      present(pending);
+    }, n === 3 ? 1400 : 1100);
+    return;
+  }
+  const streetBeat = target.length > have || (s.street && s.street !== lastStreet);
+  shownBoard = target.slice();
+  pending = null;
+  animating = false;
+  render(s);
+  schedule(s, streetBeat);
+  lastStreet = s.street;
+}
+function schedule(s, streetBeat) {
+  clearTimeout(timer);
+  if (!s || s.error || animating) return;
+  if (s.done) {
+    timer = setTimeout(() => {
+      shownBoard = [];
+      prevBoardN = 0;
+      apply(jokerStep());
+    }, 3200);
+    return;
+  }
+  if (s.toAct >= 0 && s.toAct !== s.hero) {
+    timer = setTimeout(() => apply(jokerStep()), streetBeat ? 1400 : 650);
+  }
+}
+function apply(raw) { present(parse(raw)); }
 function act(typ) {
   const chips = Number(document.getElementById("amount").value) || 0;
   apply(jokerAct(typ, chips));
