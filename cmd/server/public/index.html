@@ -332,6 +332,7 @@
     position: absolute; left: 50%; bottom: 11%; transform: translateX(-50%);
     display: flex; gap: 6px; z-index: 7;
   }
+  .hero-cards.folded { opacity: .4; filter: grayscale(.55); }
   .hero-cards .card {
     width: 78px; height: 110px;
     transform: rotate(var(--rot, 0deg));
@@ -588,6 +589,7 @@ function render(s) {
   const hero = (s.players || []).find(p => p.seat === s.hero);
   const hc = document.getElementById("heroCards");
   hc.innerHTML = "";
+  hc.classList.toggle("folded", !!(hero && hero.folded));
   if (hero && hero.hole && hero.hole.length) {
     hero.hole.forEach(c => hc.appendChild(cardEl(c, false)));
   }
