@@ -177,14 +177,14 @@
     z-index: 5; text-align: center; pointer-events: none;
   }
   .avatar {
-    width: 62px; height: 62px; margin: 0 auto;
+    width: 68px; height: 68px; margin: 0 auto;
     border-radius: 50%;
     border: 3px solid #e4c56a;
     box-shadow: 0 2px 6px #000, inset 0 0 0 1px #7a5a20;
-    overflow: hidden; background: #234;
+    overflow: hidden; background: #1a1a22;
     position: relative;
   }
-  .avatar svg { width: 100%; height: 100%; display: block; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; }
   .seat.hero .avatar { border-color: #fff; box-shadow: 0 0 0 2px #c41212, 0 2px 6px #000; }
   .seat.to-act .avatar {
     box-shadow: 0 0 0 3px #ffd24a, 0 0 18px #ffd24a;
@@ -371,38 +371,21 @@ const DPOS = [
   {l:42, t:80}, {l:28, t:76}, {l:14, t:50}, {l:20, t:30}, {l:38, t:16},
   {l:62, t:16}, {l:80, t:30}, {l:86, t:50}, {l:72, t:76}
 ];
-const PAL = [
-  { skin:"#f0c2a0", hair:"#3a2415", shirt:"#8b1e1e", bg:"#3a1a1a" },
-  { skin:"#e8c39e", hair:"#c8c8c8", shirt:"#2c4a6e", bg:"#1a2a3a", glasses:true },
-  { skin:"#f3d0b0", hair:"#d4b05a", shirt:"#2e6b3a", bg:"#1a3320" },
-  { skin:"#c9956a", hair:"#1a1a1a", shirt:"#5a2a7a", bg:"#2a1a3a" },
-  { skin:"#f4c7a1", hair:"#6a3a18", shirt:"#1e4a8a", bg:"#152238" },
-  { skin:"#e0b090", hair:"#8a2020", shirt:"#8a6a20", bg:"#332818" },
-  { skin:"#f6d3b4", hair:"#2a2a2a", shirt:"#1a6a6a", bg:"#143030" },
-  { skin:"#d4a07a", hair:"#4a3020", shirt:"#6a1a1a", bg:"#301414" },
-  { skin:"#efc8a8", hair:"#e8e0d0", shirt:"#3a3a8a", bg:"#181830" }
+const AVATARS = [
+  "avatars/avatar-astronaut.webp",
+  "avatars/avatar-robot.webp",
+  "avatars/avatar-dragon-red.webp",
+  "avatars/avatar-dragon-green.webp",
+  "avatars/avatar-wizard.webp",
+  "avatars/avatar-pirate.webp",
+  "avatars/avatar-alien.webp",
+  "avatars/avatar-ninja.webp",
+  "avatars/avatar-knight.webp",
+  "avatars/avatar-fox.webp"
 ];
-
-function avatarSVG(seat) {
-  const p = PAL[seat % PAL.length];
-  const glasses = p.glasses
-    ? `<rect x="18" y="26" width="12" height="7" rx="2" fill="none" stroke="#222" stroke-width="1.4"/>
-       <rect x="34" y="26" width="12" height="7" rx="2" fill="none" stroke="#222" stroke-width="1.4"/>
-       <path d="M30 29 H34" stroke="#222" stroke-width="1.2"/>`
-    : "";
-  const hair = seat % 3 === 1
-    ? `<path d="M16 26 Q32 6 48 26 Q32 18 16 26" fill="${p.hair}"/>`
-    : `<ellipse cx="32" cy="18" rx="16" ry="10" fill="${p.hair}"/>`;
-  return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="32" cy="32" r="32" fill="${p.bg}"/>
-    <ellipse cx="32" cy="62" rx="20" ry="16" fill="${p.shirt}"/>
-    <circle cx="32" cy="30" r="15" fill="${p.skin}"/>
-    ${hair}
-    <circle cx="26" cy="29" r="1.8" fill="#222"/>
-    <circle cx="38" cy="29" r="1.8" fill="#222"/>
-    ${glasses}
-    <path d="M26 37 Q32 42 38 37" stroke="#a45" fill="none" stroke-width="1.6" stroke-linecap="round"/>
-  </svg>`;
+function avatarEl(seat) {
+  const src = AVATARS[seat % AVATARS.length];
+  return `<img src="${src}" alt="" width="68" height="68"/>`;
 }
 
 function splitCard(s) {
@@ -514,7 +497,7 @@ function render(s) {
     el.style.left = pos.l + "%";
     el.style.top = pos.t + "%";
     el.innerHTML = `
-      <div class="avatar">${avatarSVG(p.seat)}</div>
+      <div class="avatar">${avatarEl(p.seat)}</div>
       <div class="nameplate">
         <div class="name">${p.id}</div>
         <div class="stack">${fmt(p.chips)}${p.award ? " +" + fmt(p.award) : ""}</div>
