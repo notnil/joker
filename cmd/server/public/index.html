@@ -1,20 +1,201 @@
-<html>
-	<head>
-		<meta charset="utf-8"/>
-		<script src="wasm_exec.js"></script>
-		<script>
-			if (!WebAssembly.instantiateStreaming) { // polyfill
-				WebAssembly.instantiateStreaming = async (resp, importObject) => {
-					const source = await (await resp).arrayBuffer();
-					return await WebAssembly.instantiate(source, importObject);
-				};
-			}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Joker — 9-max vs bots</title>
+<style>
+  :root {
+    --felt: #0d4f3c;
+    --felt-edge: #083528;
+    --wood: #5c3317;
+    --ink: #e8f0e9;
+    --muted: #9bb8a8;
+    --gold: #e2c36b;
+    --danger: #d45d5d;
+    --seat: #1a1a1a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #121212; color: var(--ink); font-family: "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size: 1.1rem; font-weight: 600; margin: 0; letter-spacing: .04em; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+  button, input {
+    font: inherit; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: var(--ink); padding: 8px 12px;
+  }
+  button { cursor: pointer; }
+  button:disabled { opacity: .35; cursor: default; }
+  button.primary { background: var(--gold); color: #1a1408; border-color: #c9a84a; font-weight: 600; }
+  button.danger { background: var(--danger); border-color: #b34a4a; }
+  .wrap { display: grid; grid-template-columns: 1fr 240px; gap: 16px; padding: 0 16px 16px; height: calc(100% - 56px); }
+  .felt {
+    position: relative; background: radial-gradient(ellipse at center, #147a5a 0%, var(--felt) 55%, var(--felt-edge) 100%);
+    border: 14px solid var(--wood); border-radius: 50% / 42%; min-height: 520px;
+    box-shadow: inset 0 0 80px rgba(0,0,0,.35);
+  }
+  .center {
+    position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%); text-align: center;
+  }
+  .pot { font-size: 1.4rem; color: var(--gold); }
+  .board { display: flex; gap: 6px; justify-content: center; margin-top: 10px; min-height: 52px; }
+  .card {
+    background: #f7f3ea; color: #1a1a1a; border-radius: 6px; min-width: 38px; padding: 8px 6px;
+    font-weight: 700; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,.4);
+  }
+  .card.red { color: #c0392b; }
+  .seat {
+    position: absolute; width: 140px; margin-left: -70px; margin-top: -40px; background: var(--seat);
+    border: 2px solid #333; border-radius: 10px; padding: 8px; text-align: center; font-size: .85rem;
+  }
+  .seat.hero { border-color: var(--gold); }
+  .seat.to-act { box-shadow: 0 0 0 3px var(--gold); }
+  .seat.folded { opacity: .45; }
+  .seat .name { font-weight: 600; }
+  .seat .chips { color: var(--gold); font-variant-numeric: tabular-nums; }
+  .seat .hole { margin-top: 4px; display: flex; gap: 4px; justify-content: center; }
+  .seat .hole .card { min-width: 28px; padding: 4px 3px; font-size: .8rem; }
+  .btn { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: #ddd; color: #111;
+    font-size: .7rem; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%); }
+  .sidebar { display: flex; flex-direction: column; gap: 10px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .log { flex: 1; overflow: auto; background: #1c1c1c; border-radius: 8px; padding: 8px; font-size: .8rem; color: var(--muted); }
+  .log div { padding: 2px 0; border-bottom: 1px solid #2a2a2a; }
+  .err { color: var(--danger); min-height: 1.2em; font-size: .85rem; }
+  .street { color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Joker 9-max</h1>
+  <button class="primary" id="newGame">New game</button>
+</header>
+<div class="wrap">
+  <div class="felt" id="felt">
+    <div class="center">
+      <div class="pot" id="pot">Pot 0</div>
+      <div class="street" id="street"></div>
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="err" id="err"></div>
+    <div class="actions" id="actions"></div>
+    <label>Amount <input id="amount" type="number" min="0" step="50" value="200" style="width:100%"/></label>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+<script src="wasm_exec.js"></script>
+<script>
+const go = new Go();
+let state = null;
+let timer = null;
 
-			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
-				go.run(result.instance);
-			});
-		</script>
-	</head>
-	<body></body>
+function isRed(s) { return s.includes("♥") || s.includes("♦"); }
+function cardEl(s) {
+  const d = document.createElement("div");
+  d.className = "card" + (isRed(s) ? " red" : "");
+  d.textContent = s;
+  return d;
+}
+
+function seatPos(i, n) {
+  const theta = Math.PI / 2 + i * 2 * Math.PI / n;
+  return { left: 50 + 42 * Math.cos(theta), top: 50 + 36 * Math.sin(theta) };
+}
+
+function parse(raw) {
+  try { return JSON.parse(raw); } catch (e) { return { error: String(raw) }; }
+}
+
+function render(s) {
+  state = s;
+  document.getElementById("err").textContent = s.error || "";
+  document.getElementById("pot").textContent = "Pot " + (s.pot || 0);
+  document.getElementById("street").textContent = (s.street || "") + (s.toAct >= 0 ? " · to act " + s.toAct : "");
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  (s.board || []).forEach(c => board.appendChild(cardEl(c)));
+
+  const felt = document.getElementById("felt");
+  felt.querySelectorAll(".seat,.btn").forEach(n => n.remove());
+  const n = s.seats || 9;
+  (s.players || []).forEach(p => {
+    const pos = seatPos(p.seat, n);
+    const el = document.createElement("div");
+    el.className = "seat" + (p.seat === s.hero ? " hero" : "") + (p.seat === s.toAct ? " to-act" : "") + (p.folded ? " folded" : "");
+    el.style.left = pos.left + "%";
+    el.style.top = pos.top + "%";
+    const hole = document.createElement("div");
+    hole.className = "hole";
+    (p.hole || []).forEach(c => hole.appendChild(cardEl(c)));
+    el.innerHTML = `<div class="name">${p.id}</div><div class="chips">${p.chips}${p.award ? " +" + p.award : ""}</div>`;
+    if (p.hand) {
+      const h = document.createElement("div");
+      h.style.color = "var(--muted)";
+      h.style.fontSize = ".75rem";
+      h.textContent = p.hand;
+      el.appendChild(h);
+    }
+    el.appendChild(hole);
+    felt.appendChild(el);
+  });
+  if (s.button >= 0) {
+    const bp = seatPos(s.button, n);
+    const d = document.createElement("div");
+    d.className = "btn";
+    d.textContent = "D";
+    d.style.left = (bp.left + 8) + "%";
+    d.style.top = (bp.top - 8) + "%";
+    felt.appendChild(d);
+  }
+
+  const actions = document.getElementById("actions");
+  actions.innerHTML = "";
+  const heroTurn = s.toAct === s.hero && !s.done;
+  const legal = new Set(s.legal || []);
+  const amt = document.getElementById("amount");
+  if (legal.has("bet")) amt.value = s.minBet || 100;
+  if (legal.has("raise")) amt.value = s.minRaiseTo || 200;
+  ["fold","check","call","bet","raise","allin"].forEach(typ => {
+    const b = document.createElement("button");
+    b.textContent = typ === "allin" ? "All-in" : typ[0].toUpperCase() + typ.slice(1);
+    if (typ === "fold") b.className = "danger";
+    b.disabled = !heroTurn || !legal.has(typ);
+    b.onclick = () => act(typ);
+    actions.appendChild(b);
+  });
+
+  const log = document.getElementById("log");
+  log.innerHTML = (s.log || []).slice().reverse().map(l => `<div>${l}</div>`).join("");
+
+  schedule(s);
+}
+
+function schedule(s) {
+  clearTimeout(timer);
+  if (!s || s.error) return;
+  if (s.done) {
+    timer = setTimeout(() => apply(jokerStep()), 1600);
+    return;
+  }
+  if (s.toAct >= 0 && s.toAct !== s.hero) {
+    timer = setTimeout(() => apply(jokerStep()), 450);
+  }
+}
+
+function apply(raw) { render(parse(raw)); }
+
+function act(typ) {
+  const chips = Number(document.getElementById("amount").value) || 0;
+  apply(jokerAct(typ, chips));
+}
+
+document.getElementById("newGame").onclick = () => apply(jokerNewGame());
+
+WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then(async (result) => {
+  go.run(result.instance);
+  apply(jokerNewGame());
+});
+</script>
+</body>
 </html>
