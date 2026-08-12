@@ -125,14 +125,14 @@
     pointer-events: none;
   }
   .watermark {
-    position: absolute; left: 50%; top: 31%;
-    transform: translate(-50%, -50%);
-    width: min(54%, 520px);
-    z-index: 1;
-    pointer-events: none; user-select: none;
-    opacity: .9;
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) rotate(-8deg);
+    font: italic 800 clamp(72px, 10vw, 128px) Georgia, "Times New Roman", serif;
+    color: rgba(255,255,255,.08); letter-spacing: .2em;
+    text-shadow: 0 1px 0 rgba(0,0,0,.18), 0 -1px 0 rgba(255,255,255,.06);
+    pointer-events: none; user-select: none; z-index: 1;
+    white-space: nowrap;
   }
-  .watermark svg { width: 100%; height: auto; display: block; }
   .center {
     position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
     text-align: center; z-index: 2; width: 70%;
@@ -363,51 +363,7 @@
         <div class="brass">
           <div class="felt" id="felt">
             <div class="felt-ring"></div>
-            <div class="watermark" aria-hidden="true">
-              <svg viewBox="0 0 520 168" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="feltGold" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#f3e2b0"/>
-                    <stop offset="55%" stop-color="#d4b36a"/>
-                    <stop offset="100%" stop-color="#9a7438"/>
-                  </linearGradient>
-                  <filter id="feltEmboss" x="-5%" y="-5%" width="110%" height="110%">
-                    <feDropShadow dx="0" dy="1" stdDeviation="0" flood-color="#fff" flood-opacity=".18"/>
-                    <feDropShadow dx="0" dy="-1" stdDeviation="0" flood-color="#0a3d28" flood-opacity=".45"/>
-                  </filter>
-                </defs>
-                <g fill="none" stroke="url(#feltGold)" stroke-opacity=".38" filter="url(#feltEmboss)">
-                  <path d="M70 78 Q260 18 450 78" stroke-width="1.6"/>
-                  <path d="M92 86 Q260 32 428 86" stroke-width=".7" stroke-opacity=".28"/>
-                </g>
-                <g filter="url(#feltEmboss)" opacity=".55">
-                  <path d="M260 18 L248 48 L272 48 Z" fill="#6b1c2a"/>
-                  <path d="M248 48 L232 44 L244 58 Z" fill="#1e4a8a"/>
-                  <path d="M272 48 L288 44 L276 58 Z" fill="#1e6a38"/>
-                  <circle cx="260" cy="16" r="4.2" fill="url(#feltGold)"/>
-                  <circle cx="230" cy="43" r="3.4" fill="url(#feltGold)"/>
-                  <circle cx="290" cy="43" r="3.4" fill="url(#feltGold)"/>
-                  <rect x="252" y="48" width="16" height="10" rx="2" fill="#3a2415"/>
-                </g>
-                <text x="260" y="118" text-anchor="middle"
-                      font-family="Georgia, 'Times New Roman', serif"
-                      font-style="italic" font-weight="800" font-size="64"
-                      letter-spacing="10" fill="url(#feltGold)" fill-opacity=".42"
-                      stroke="#0a3d28" stroke-opacity=".22" stroke-width="1.2"
-                      filter="url(#feltEmboss)">JOKER</text>
-                <text x="260" y="142" text-anchor="middle"
-                      font-family="Tahoma, Verdana, sans-serif"
-                      font-weight="700" font-size="11" letter-spacing="6"
-                      fill="#f3e2b0" fill-opacity=".32">NO-LIMIT HOLD'EM</text>
-                <g fill="url(#feltGold)" fill-opacity=".4" font-size="16" text-anchor="middle"
-                   font-family="Georgia, serif" filter="url(#feltEmboss)">
-                  <text x="108" y="100">♠</text>
-                  <text x="148" y="72">♥</text>
-                  <text x="372" y="72">♦</text>
-                  <text x="412" y="100">♣</text>
-                </g>
-              </svg>
-            </div>
+            <div class="watermark" aria-hidden="true">JOKER</div>
             <div class="center">
               <div class="pot-label" id="pot">Pot 0</div>
               <div class="street" id="street"></div>
