@@ -1,0 +1,50 @@
+[
+  {
+    "name": "classic-side-pots-with-folder",
+    "contributions": [
+      {"seat": 0, "chips": 5},
+      {"seat": 1, "chips": 10},
+      {"seat": 2, "chips": 10},
+      {"seat": 3, "chips": 7, "folded": true}
+    ],
+    "expect": [
+      {"amount": 20, "eligible": [0, 1, 2]},
+      {"amount": 12, "eligible": [1, 2]}
+    ]
+  },
+  {
+    "name": "three-way-all-in",
+    "contributions": [
+      {"seat": 0, "chips": 30},
+      {"seat": 1, "chips": 50},
+      {"seat": 2, "chips": 100}
+    ],
+    "expect": [
+      {"amount": 90, "eligible": [0, 1, 2]},
+      {"amount": 40, "eligible": [1, 2]},
+      {"amount": 50, "eligible": [2]}
+    ]
+  },
+  {
+    "name": "uncalled-bet-after-fold",
+    "contributions": [
+      {"seat": 0, "chips": 50, "folded": true},
+      {"seat": 1, "chips": 100}
+    ],
+    "expect": [
+      {"amount": 150, "eligible": [1]}
+    ]
+  },
+  {
+    "name": "four-way-two-folders",
+    "contributions": [
+      {"seat": 0, "chips": 20, "folded": true},
+      {"seat": 1, "chips": 80},
+      {"seat": 2, "chips": 80},
+      {"seat": 3, "chips": 40, "folded": true}
+    ],
+    "expect": [
+      {"amount": 220, "eligible": [1, 2]}
+    ]
+  }
+]

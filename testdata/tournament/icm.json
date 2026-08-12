@@ -1,0 +1,22 @@
+[
+  {
+    "name": "malmuth-harville-500-300-200",
+    "stacks": [500, 300, 200],
+    "payouts": [50, 30, 20],
+    "expect": [38, 33, 29]
+  },
+  {
+    "name": "equal-three-way",
+    "stacks": [1000, 1000, 1000],
+    "payouts": [50, 30, 20],
+    "expectSum": 100,
+    "minEach": 33,
+    "maxEach": 34
+  },
+  {
+    "name": "chip-leader-vs-shorts",
+    "stacks": [8000, 1000, 1000],
+    "payouts": [50, 30, 20],
+    "expectSum": 100
+  }
+]
