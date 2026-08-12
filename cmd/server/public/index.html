@@ -512,9 +512,30 @@ function parse(raw) {
   try { return JSON.parse(raw); } catch (e) { return { error: String(raw) }; }
 }
 function fmt(n) { return Number(n || 0).toLocaleString(); }
+function heroPlayer(s) {
+  return (s.players || []).find(x => x.seat === s.hero);
+}
 function heroStack(s) {
-  const p = (s.players || []).find(x => x.seat === s.hero);
+  const p = heroPlayer(s);
   return p ? p.chips : 0;
+}
+function heroPut(s) {
+  const p = heroPlayer(s);
+  return p ? (p.streetPut || 0) : 0;
+}
+function wantsAllIn(s, amt) {
+  const legal = new Set(s.legal || []);
+  if (!legal.has("allin")) return false;
+  const stack = heroStack(s);
+  const put = heroPut(s);
+  if (!legal.has("bet") && !legal.has("raise")) return true;
+  return amt >= stack || amt >= put + stack;
+}
+function sizingMax(s) {
+  const legal = new Set(s.legal || []);
+  const stack = heroStack(s);
+  if (legal.has("raise")) return heroPut(s) + stack;
+  return stack;
 }
 const CHIP_PAL = {
   white:  ["#f4f4f4", "#8e8e8e", "#c41212"],
@@ -663,14 +684,21 @@ function render(s) {
   const callAmt = s.call || 0;
   const minBet = legal.has("raise") ? (s.minRaiseTo || 0) : (s.minBet || 0);
   const stack = heroStack(s);
+  const cap = sizingMax(s);
   const slider = document.getElementById("slider");
   const amt = document.getElementById("amount");
-  slider.min = minBet || 0;
-  slider.max = Math.max(stack, minBet || 0);
   slider.step = 50;
   if (legal.has("bet") || legal.has("raise")) {
-    if (Number(amt.value) < minBet) amt.value = minBet;
+    slider.min = Math.min(minBet || 0, cap);
+    slider.max = Math.max(cap, 0);
+    if (Number(amt.value) < Number(slider.min)) amt.value = slider.min;
+    if (Number(amt.value) > cap) amt.value = cap;
     slider.value = amt.value;
+  } else if (legal.has("allin")) {
+    slider.min = stack;
+    slider.max = stack;
+    amt.value = stack;
+    slider.value = stack;
   }
   const raiseTo = Number(amt.value) || minBet;
   const mk = (typ, label, cls) => {
@@ -684,7 +712,8 @@ function render(s) {
   mk("fold", "Fold", "btn-fold");
   if (legal.has("check")) mk("check", "Check", "btn-call");
   else mk("call", callAmt ? "Call " + fmt(callAmt) : "Call", "btn-call");
-  if (legal.has("bet")) mk("bet", "Bet " + fmt(raiseTo), "btn-raise");
+  if (wantsAllIn(s, raiseTo)) mk("allin", "All-in " + fmt(stack), "btn-raise");
+  else if (legal.has("bet")) mk("bet", "Bet " + fmt(raiseTo), "btn-raise");
   else mk("raise", "Raise to " + fmt(raiseTo), "btn-raise");
 
   document.getElementById("log").innerHTML = (s.log || []).slice().reverse().map(l => `<div>${l}</div>`).join("");
@@ -708,12 +737,27 @@ function winnerBanner(s) {
 }
 
 function raiseLabel() {
-  const raiseTo = Number(document.getElementById("amount").value) || 0;
   const raiseBtn = document.querySelector(".btn-raise");
   if (!raiseBtn || !state) return;
   const legal = new Set(state.legal || []);
-  if (legal.has("bet")) raiseBtn.textContent = "Bet " + fmt(raiseTo);
-  else raiseBtn.textContent = "Raise to " + fmt(raiseTo);
+  const stack = heroStack(state);
+  const raiseTo = Number(document.getElementById("amount").value) || 0;
+  const heroTurn = state.toAct === state.hero && !state.done;
+  if (wantsAllIn(state, raiseTo)) {
+    raiseBtn.textContent = "All-in " + fmt(stack);
+    raiseBtn.disabled = !heroTurn || !legal.has("allin");
+    raiseBtn.onclick = () => act("allin");
+    return;
+  }
+  if (legal.has("bet")) {
+    raiseBtn.textContent = "Bet " + fmt(raiseTo);
+    raiseBtn.disabled = !heroTurn || !legal.has("bet");
+    raiseBtn.onclick = () => act("bet");
+  } else {
+    raiseBtn.textContent = "Raise to " + fmt(raiseTo);
+    raiseBtn.disabled = !heroTurn || !legal.has("raise");
+    raiseBtn.onclick = () => act("raise");
+  }
 }
 function setAmount(v) {
   document.getElementById("amount").value = v;
@@ -731,14 +775,22 @@ document.getElementById("amount").oninput = (e) => {
 document.querySelectorAll(".sizing .row button").forEach(b => {
   b.onclick = () => {
     if (!state) return;
+    const legal = new Set(state.legal || []);
     const stack = heroStack(state);
     const pot = state.pot || 0;
     const min = Number(document.getElementById("slider").min) || 0;
+    const cap = sizingMax(state);
     let v = min;
     if (b.dataset.size === "pot2") v = Math.max(min, Math.floor(pot / 2));
     if (b.dataset.size === "pot") v = Math.max(min, pot);
-    if (b.dataset.size === "allin") v = stack;
-    setAmount(Math.min(stack, v));
+    if (b.dataset.size === "allin") {
+      if (legal.has("allin") && state.toAct === state.hero && !state.done) {
+        act("allin");
+        return;
+      }
+      v = cap;
+    }
+    setAmount(Math.min(cap, Math.max(0, v)));
   };
 });
 
