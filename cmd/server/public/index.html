@@ -157,8 +157,8 @@
     box-shadow: 0 3px 6px rgba(0,0,0,.45), inset 0 0 0 1px #cfc4ae;
     position: relative; color: #161616; font-weight: 800;
   }
-  .card .r { position: absolute; top: 3px; left: 5px; font-size: 15px; line-height: 1; }
-  .card .s { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .card .r { position: absolute; top: 2px; left: 4px; font-size: 22px; line-height: 1; }
+  .card .s { position: absolute; inset: 8px 0 0; display: flex; align-items: center; justify-content: center; font-size: 40px; }
   .card.red { color: #c41212; }
   .card.back {
     background:
@@ -261,6 +261,8 @@
     transform: rotate(var(--rot, 0deg));
     box-shadow: 0 6px 12px rgba(0,0,0,.5), inset 0 0 0 1px #cfc4ae;
   }
+  .hero-cards .card .r { font-size: 32px; top: 3px; left: 5px; }
+  .hero-cards .card .s { font-size: 56px; }
   .hero-cards .card:first-child { --rot: -9deg; margin-right: -8px; }
   .hero-cards .card:last-child { --rot: 9deg; }
 
