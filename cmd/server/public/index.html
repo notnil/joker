@@ -208,11 +208,11 @@
   .card.sm.back .back-face { font-size: 8px; border-width: 1px; }
 
   .seat {
-    position: absolute; width: 130px; margin-left: -65px; margin-top: -70px;
+    position: absolute; width: 140px; margin-left: -70px; margin-top: -50px;
     z-index: 5; text-align: center; pointer-events: none;
   }
   .avatar {
-    width: 82px; height: 82px; margin: 0 auto;
+    width: 90px; height: 90px; margin: 0 auto;
     border-radius: 50%;
     border: 3px solid #e8c56a;
     box-shadow: 0 0 0 2px #6a4a18, 0 3px 6px #000;
@@ -221,11 +221,9 @@
   }
   .avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center 12%; transform: scale(1.12); display: block; }
   .seat.hero {
-    width: 160px; margin-left: 0; margin-top: 0; z-index: 6;
-    transform: translate(-50%, -100%);
+    width: 160px; margin-left: -80px; margin-top: -50px; z-index: 6;
   }
   .seat.hero .avatar {
-    width: 100px; height: 100px;
     border-color: #fff; box-shadow: 0 0 0 2px #c41212, 0 2px 6px #000;
   }
   .seat.to-act .avatar {
@@ -289,6 +287,8 @@
   .seat.hero .hole .card {
     width: 54px; height: 76px;
   }
+  .seat.hero .hole .card:first-child { transform: rotate(-5deg); margin-right: -8px; }
+  .seat.hero .hole .card:last-child { transform: rotate(5deg); }
   .seat.hero .hole .card .r { font-size: 22px; top: 3px; left: 5px; }
   .seat.hero .hole .card .s { font-size: 34px; }
   .seat.hero .nameplate {
@@ -438,18 +438,13 @@ let timer = null;
 
 /* 9-max racetrack: hero at bottom, increasing seats to hero's left
    (screen-left). That matches clockwise table action. */
-const SEATS = [
-  {l:50, t:94}, {l:22, t:86}, {l:4, t:58}, {l:12, t:24}, {l:34, t:7},
-  {l:66, t:7}, {l:88, t:24}, {l:96, t:58}, {l:78, t:86}
-];
-const BETS = [
-  {l:50, t:73}, {l:32, t:69}, {l:21, t:54}, {l:27, t:34}, {l:40, t:23},
-  {l:60, t:23}, {l:73, t:34}, {l:79, t:54}, {l:68, t:69}
-];
-const DPOS = [
-  {l:42, t:80}, {l:28, t:76}, {l:14, t:50}, {l:20, t:30}, {l:38, t:16},
-  {l:62, t:16}, {l:80, t:30}, {l:86, t:50}, {l:72, t:76}
-];
+function oval(i, n, rx, ry) {
+  const theta = Math.PI / 2 + i * 2 * Math.PI / n;
+  return { l: 50 + rx * Math.cos(theta), t: 50 + ry * Math.sin(theta) };
+}
+const SEATS = Array.from({length: 9}, (_, i) => oval(i, 9, 46, 41));
+const BETS = Array.from({length: 9}, (_, i) => oval(i, 9, 28, 24));
+const DPOS = Array.from({length: 9}, (_, i) => oval(i, 9, 36, 32));
 const AVATARS = [
   "avatars/avatar-astronaut.webp",
   "avatars/avatar-robot.webp",
