@@ -27,6 +27,13 @@ type View struct {
 	Legal      []string    `json:"legal"`
 	Done       bool        `json:"done"`
 	Players    []SeatView  `json:"players"`
+	Pots       []PotView   `json:"pots,omitempty"`
+}
+
+// PotView is one main or side pot in a View.
+type PotView struct {
+	Amount   int   `json:"amount"`
+	Eligible []int `json:"eligible"`
 }
 
 // SeatView is one seat in a View.
@@ -99,6 +106,12 @@ func (h *Hand) View(hero int) View {
 		street = h.street.String()
 	}
 
+	pots := h.Pots()
+	pv := make([]PotView, len(pots))
+	for i, sp := range pots {
+		pv[i] = PotView{Amount: sp.Amount, Eligible: slices.Clone(sp.Eligible)}
+	}
+
 	return View{
 		Hero:       hero,
 		Seats:      h.table.config.Seats,
@@ -115,6 +128,7 @@ func (h *Hand) View(hero int) View {
 		Legal:      legal,
 		Done:       h.done,
 		Players:    players,
+		Pots:       pv,
 	}
 }
 

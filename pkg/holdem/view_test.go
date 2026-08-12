@@ -66,6 +66,38 @@ func TestViewShowdownRevealsContesting(t *testing.T) {
 	}
 }
 
+func TestViewSidePots(t *testing.T) {
+	tbl, err := NewTable(Config{Seats: 3, Stakes: Stakes{SmallBlind: 50, BigBlind: 100}}, dealerOf(
+		"Ah", "Ad",
+		"Kc", "Kd",
+		"2s", "3s",
+		"2h", "7c", "8d", "9s", "Jc",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sitN(t, tbl, 1000, 300, 500)
+	_ = tbl.SetButton(0)
+	h, err := tbl.StartHand()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustAct(t, h, RaiseTo(1000))
+	mustAct(t, h, AllInAction())
+	mustAct(t, h, AllInAction())
+	v := h.View(0)
+	if len(v.Pots) < 2 {
+		t.Fatalf("want side pots, got %+v", v.Pots)
+	}
+	total := 0
+	for _, p := range v.Pots {
+		total += p.Amount
+	}
+	if total != v.Pot {
+		t.Fatalf("pot parts %d != total %d", total, v.Pot)
+	}
+}
+
 func TestParseAction(t *testing.T) {
 	a, err := ParseAction("RAISE", 300)
 	if err != nil || a.Type != Raise || a.Chips != 300 {

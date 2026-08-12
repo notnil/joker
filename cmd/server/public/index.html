@@ -144,6 +144,29 @@
     display: inline-block; padding: 3px 14px; border-radius: 12px;
     border: 1px solid rgba(255,210,100,.25);
   }
+  .pot-piles {
+    display: flex; justify-content: center; align-items: flex-end; gap: 16px;
+    margin: 6px 0 2px; min-height: 0;
+  }
+  .pot-pile {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .pot-pile .chip-stack { height: 34px; }
+  .pot-pile .chip-col { height: 34px; width: 28px; }
+  .pot-pile .chip { width: 28px; height: 18px; }
+  .pot-pile .chip svg { width: 28px; height: 18px; }
+  .pot-pile .lab {
+    font-size: 11px; font-weight: 700; color: #ffe9a0;
+    text-shadow: 0 1px 2px #000;
+    background: rgba(0,0,0,.42);
+    padding: 1px 8px; border-radius: 8px;
+    border: 1px solid rgba(196,163,90,.5);
+  }
+  .pot-pile .who {
+    font-size: 9px; color: #d5e8d8; max-width: 96px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-shadow: 0 1px 2px #000;
+  }
   .street {
     color: #e8f6e8; font-size: 11px; margin-top: 5px;
     letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 1px 2px #000;
@@ -402,6 +425,7 @@
             <div class="watermark" aria-hidden="true">JOKER</div>
             <div class="center">
               <div class="pot-label" id="pot">Pot 0</div>
+              <div class="pot-piles" id="potPiles"></div>
               <div class="street" id="street"></div>
               <div class="board" id="board"></div>
             </div>
@@ -591,10 +615,42 @@ function chipPile(amount) {
   }).join("");
 }
 
+function renderPots(s) {
+  const el = document.getElementById("potPiles");
+  el.innerHTML = "";
+  const pots = s.pots || [];
+  if (pots.length < 2) return;
+  const names = {};
+  (s.players || []).forEach(p => {
+    names[p.seat] = p.seat === s.hero ? "You" : p.id;
+  });
+  let mainSeen = false;
+  let sideN = 0;
+  pots.forEach(sp => {
+    const n = (sp.eligible || []).length;
+    let title = "Main";
+    if (n <= 1) title = "Uncalled";
+    else if (mainSeen) {
+      sideN++;
+      title = sideN === 1 ? "Side" : "Side " + sideN;
+    } else {
+      mainSeen = true;
+    }
+    const who = (sp.eligible || []).map(seat => names[seat] || ("Seat " + seat)).join(", ");
+    const d = document.createElement("div");
+    d.className = "pot-pile";
+    d.innerHTML = `<div class="chip-stack">${chipPile(sp.amount)}</div>
+      <div class="lab">${title}  ${fmt(sp.amount)}</div>
+      <div class="who">${who}</div>`;
+    el.appendChild(d);
+  });
+}
+
 function render(s) {
   state = s;
   document.getElementById("err").textContent = s.error || "";
   document.getElementById("pot").textContent = "Pot  " + fmt(s.pot);
+  renderPots(s);
   document.getElementById("street").textContent = s.street || "";
   const board = document.getElementById("board");
   board.innerHTML = "";
