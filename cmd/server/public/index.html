@@ -188,8 +188,8 @@
     font-weight: 800;
   }
   .card.red { color: #c41212; }
-  .card .r { position: absolute; top: 3px; left: 5px; font-size: 22px; line-height: 1; }
-  .card .s { position: absolute; inset: 10px 0 0; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+  .card .r { position: absolute; top: 2px; left: 5px; font-size: 20px; line-height: 1; }
+  .card .s { position: absolute; top: 22px; left: 4px; font-size: 24px; line-height: 1; }
   .card.back {
     background: #7a1418; color: #e8c56a; padding: 3px;
     box-shadow: 0 2px 5px rgba(0,0,0,.45);
@@ -202,8 +202,8 @@
     display: flex; align-items: center; justify-content: center; font-size: 13px;
   }
   .card.sm { width: 30px; height: 42px; }
-  .card.sm .r { font-size: 12px; top: 1px; left: 3px; }
-  .card.sm .s { font-size: 16px; inset: 6px 0 0; }
+  .card.sm .r { font-size: 11px; top: 1px; left: 2px; }
+  .card.sm .s { font-size: 13px; top: 13px; left: 1px; }
   .card.sm.back { padding: 2px; }
   .card.sm.back .back-face { font-size: 8px; border-width: 1px; }
 
@@ -280,20 +280,20 @@
   .nameplate .tag { color: #f66; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
   .hole { display: flex; gap: 2px; justify-content: center; margin-top: 3px; }
   .seat.hero .hole {
-    position: relative; z-index: 1;
-    margin-top: -6px; margin-bottom: -40px;
-    justify-content: center; gap: 3px;
+    position: relative; z-index: 3;
+    margin-top: -8px; margin-bottom: -20px;
+    justify-content: center; gap: 2px;
   }
   .seat.hero .hole .card {
-    width: 54px; height: 76px;
+    width: 50px; height: 70px;
   }
-  .seat.hero .hole .card:first-child { transform: rotate(-5deg); margin-right: -8px; }
-  .seat.hero .hole .card:last-child { transform: rotate(5deg); }
-  .seat.hero .hole .card .r { font-size: 22px; top: 3px; left: 5px; }
-  .seat.hero .hole .card .s { font-size: 34px; }
+  .seat.hero .hole .card:first-child { transform: rotate(-6deg); margin-right: -10px; }
+  .seat.hero .hole .card:last-child { transform: rotate(6deg); }
+  .seat.hero .hole .card .r { font-size: 26px; top: 2px; left: 5px; }
+  .seat.hero .hole .card .s { font-size: 28px; top: 28px; left: 4px; }
   .seat.hero .nameplate {
     width: 128px; margin-left: auto; margin-right: auto;
-    padding: 5px 8px;
+    padding: 5px 8px; z-index: 2;
   }
 
   .bet {
