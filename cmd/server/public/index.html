@@ -185,33 +185,11 @@
     box-shadow: 0 2px 5px rgba(0,0,0,.45), inset 0 0 0 1px #cfc6b4;
     position: relative; color: #161616; overflow: hidden;
     font-family: Palatino, "Palatino Linotype", Georgia, serif;
+    font-weight: 800;
   }
   .card.red { color: #c41212; }
-  .card .idx {
-    position: absolute; top: 2px; left: 3px; z-index: 2;
-    display: flex; flex-direction: column; align-items: center;
-    width: 16px; line-height: .92; font-weight: 800; font-size: 13px;
-  }
-  .card .idx .suit { font-size: 10px; font-weight: 400; }
-  .card .idx.bot {
-    top: auto; bottom: 2px; left: auto; right: 3px;
-    transform: rotate(180deg);
-  }
-  .card .pips { position: absolute; inset: 0; }
-  .card .pip {
-    position: absolute; transform: translate(-50%, -50%);
-    font-size: 15px; line-height: 1;
-  }
-  .card .pip.flip { transform: translate(-50%, -50%) rotate(180deg); }
-  .card .pip.ace { font-size: 34px; }
-  .card .court {
-    position: absolute; inset: 16% 20%;
-    border: 1.4px solid currentColor; border-radius: 2px;
-    background: linear-gradient(#fff, #f3ead8);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-  }
-  .card .court-letter { font-size: 22px; font-weight: 800; line-height: 1; }
-  .card .court-suit { font-size: 13px; }
+  .card .r { position: absolute; top: 3px; left: 5px; font-size: 22px; line-height: 1; }
+  .card .s { position: absolute; inset: 10px 0 0; display: flex; align-items: center; justify-content: center; font-size: 36px; }
   .card.back {
     background: #7a1418; color: #e8c56a; padding: 3px;
     box-shadow: 0 2px 5px rgba(0,0,0,.45);
@@ -224,14 +202,8 @@
     display: flex; align-items: center; justify-content: center; font-size: 13px;
   }
   .card.sm { width: 30px; height: 42px; }
-  .card.sm .idx { font-size: 8px; width: 10px; top: 1px; left: 1px; }
-  .card.sm .idx .suit { font-size: 7px; }
-  .card.sm .idx.bot { display: none; }
-  .card.sm .pip { font-size: 8px; }
-  .card.sm .pip.ace { font-size: 16px; }
-  .card.sm .court { inset: 18% 22% 12% 22%; }
-  .card.sm .court-letter { font-size: 11px; }
-  .card.sm .court-suit { font-size: 8px; }
+  .card.sm .r { font-size: 12px; top: 1px; left: 3px; }
+  .card.sm .s { font-size: 16px; inset: 6px 0 0; }
   .card.sm.back { padding: 2px; }
   .card.sm.back .back-face { font-size: 8px; border-width: 1px; }
 
@@ -361,12 +333,8 @@
     transform: rotate(var(--rot, 0deg));
     box-shadow: 0 6px 12px rgba(0,0,0,.5), inset 0 0 0 1px #cfc4ae;
   }
-  .hero-cards .card .idx { font-size: 18px; width: 22px; top: 3px; left: 4px; }
-  .hero-cards .card .idx .suit { font-size: 14px; }
-  .hero-cards .card .pip { font-size: 20px; }
-  .hero-cards .card .pip.ace { font-size: 46px; }
-  .hero-cards .card .court-letter { font-size: 32px; }
-  .hero-cards .card .court-suit { font-size: 18px; }
+  .hero-cards .card .r { font-size: 32px; top: 4px; left: 6px; }
+  .hero-cards .card .s { font-size: 52px; }
   .hero-cards .card:first-child { --rot: -6deg; margin-right: -4px; }
   .hero-cards .card:last-child { --rot: 6deg; }
 
@@ -498,18 +466,6 @@ function splitCard(s) {
   const su = s.slice(1);
   return { r, su, red: su === "♥" || su === "♦" };
 }
-const PIP_LAYOUT = {
-  A:  [[50, 50]],
-  2:  [[50, 24], [50, 76]],
-  3:  [[50, 24], [50, 50], [50, 76]],
-  4:  [[32, 24], [68, 24], [32, 76], [68, 76]],
-  5:  [[32, 24], [68, 24], [50, 50], [32, 76], [68, 76]],
-  6:  [[32, 24], [68, 24], [32, 50], [68, 50], [32, 76], [68, 76]],
-  7:  [[32, 22], [68, 22], [50, 36], [32, 50], [68, 50], [32, 78], [68, 78]],
-  8:  [[32, 22], [68, 22], [50, 36], [32, 50], [68, 50], [50, 64], [32, 78], [68, 78]],
-  9:  [[32, 20], [68, 20], [32, 40], [68, 40], [50, 50], [32, 60], [68, 60], [32, 80], [68, 80]],
-  10: [[32, 18], [68, 18], [50, 30], [32, 38], [68, 38], [32, 62], [68, 62], [50, 70], [32, 82], [68, 82]]
-};
 function cardEl(s, small) {
   const d = document.createElement("div");
   if (s === "back") {
@@ -519,17 +475,7 @@ function cardEl(s, small) {
   }
   const { r, su, red } = splitCard(s);
   d.className = "card" + (red ? " red" : "") + (small ? " sm" : "");
-  const idx = `<div class="idx"><span class="rk">${r}</span><span class="suit">${su}</span></div>
-    <div class="idx bot"><span class="rk">${r}</span><span class="suit">${su}</span></div>`;
-  if (r === "J" || r === "Q" || r === "K") {
-    d.innerHTML = idx + `<div class="court"><span class="court-letter">${r}</span><span class="court-suit">${su}</span></div>`;
-    return d;
-  }
-  const pips = (PIP_LAYOUT[r] || PIP_LAYOUT.A).map(([x, y]) => {
-    const cls = "pip" + (r === "A" ? " ace" : "") + (y > 52 ? " flip" : "");
-    return `<span class="${cls}" style="left:${x}%;top:${y}%">${su}</span>`;
-  }).join("");
-  d.innerHTML = idx + `<div class="pips">${pips}</div>`;
+  d.innerHTML = `<span class="r">${r}</span><span class="s">${su}</span>`;
   return d;
 }
 function parse(raw) {
