@@ -169,8 +169,8 @@
   }
   .card.back .s { font-size: 16px; }
   .card.sm { width: 30px; height: 42px; }
-  .card.sm .r { font-size: 10px; top: 2px; left: 3px; }
-  .card.sm .s { font-size: 13px; }
+  .card.sm .r { font-size: 13px; top: 1px; left: 2px; }
+  .card.sm .s { font-size: 18px; }
 
   .seat {
     position: absolute; width: 124px; margin-left: -62px; margin-top: -62px;
@@ -211,22 +211,24 @@
 
   .bet {
     position: absolute; z-index: 4; transform: translate(-50%, -50%);
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
   }
-  .chip-stack { display: flex; flex-direction: column-reverse; align-items: center; }
+  .chip-stack {
+    display: flex; align-items: flex-end; justify-content: center; gap: 3px;
+    height: 48px;
+  }
+  .chip-col {
+    position: relative; width: 34px; height: 48px;
+  }
+  .chip-col:nth-child(2) { transform: rotate(4deg); margin-bottom: 1px; }
+  .chip-col:nth-child(3) { transform: rotate(-5deg); }
   .chip {
-    width: 22px; height: 8px; border-radius: 50%;
-    margin-top: -4px;
-    box-shadow: 0 1px 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35);
-    border: 1px dashed rgba(255,255,255,.45);
+    position: absolute; left: 0; width: 34px; height: 22px;
+    bottom: calc(var(--i, 0) * 5px);
+    z-index: calc(var(--i, 0) + 1);
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.55));
   }
-  .chip.white { background: #eee; border-color: #999; }
-  .chip.red { background: #c41212; }
-  .chip.green { background: #1e8a3a; }
-  .chip.black { background: #1a1a1a; border-color: #888; }
-  .chip.purple { background: #6b2fa0; }
-  .chip.yellow { background: #e6c01e; border-color: #a80; }
-  .chip.orange { background: #e07018; }
+  .chip svg { display: block; width: 34px; height: 22px; }
   .chip-amt {
     background: rgba(0,0,0,.62); color: var(--gold);
     font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 8px;
@@ -429,21 +431,58 @@ function heroStack(s) {
   const p = (s.players || []).find(x => x.seat === s.hero);
   return p ? p.chips : 0;
 }
+const CHIP_PAL = {
+  white:  ["#f4f4f4", "#8e8e8e", "#c41212"],
+  red:    ["#e22222", "#8c1010", "#ffffff"],
+  green:  ["#22a048", "#0e5c28", "#ffffff"],
+  blue:   ["#2a7ad4", "#134a8a", "#ffffff"],
+  black:  ["#2a2a2a", "#0a0a0a", "#f2f2f2"],
+  purple: ["#8a38c8", "#4e1a78", "#ffffff"],
+  yellow: ["#f0cc22", "#b07810", "#ffffff"],
+  orange: ["#f07818", "#a04808", "#ffffff"]
+};
+function chipSVG(color) {
+  const [body, edge, spot] = CHIP_PAL[color] || CHIP_PAL.red;
+  const spots = Array.from({length: 8}, (_, i) => {
+    const a = (i / 8) * Math.PI * 2 + 0.18;
+    const x = (20 + Math.cos(a) * 14.4).toFixed(1);
+    const y = (10.4 + Math.sin(a) * 7.3).toFixed(1);
+    return `<ellipse cx="${x}" cy="${y}" rx="2.2" ry="1.4" fill="${spot}"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 40 26" aria-hidden="true">
+    <ellipse cx="20" cy="16.2" rx="17.6" ry="9" fill="${edge}"/>
+    <ellipse cx="20" cy="10.4" rx="17.6" ry="9" fill="${body}"/>
+    ${spots}
+    <ellipse cx="20" cy="10.4" rx="9.6" ry="5" fill="none" stroke="${spot}" stroke-width="1.4"/>
+    <ellipse cx="20" cy="8.8" rx="13" ry="4.6" fill="#fff" opacity=".16"/>
+  </svg>`;
+}
 function chipPile(amount) {
   const denoms = [
     [5000, "orange"], [1000, "yellow"], [500, "purple"],
-    [100, "black"], [25, "green"], [5, "red"], [1, "white"]
+    [100, "black"], [50, "blue"], [25, "green"], [5, "red"], [1, "white"]
   ];
-  let left = amount;
-  const chips = [];
+  let left = Math.max(0, amount | 0);
+  const colors = [];
   for (const [v, cls] of denoms) {
-    while (left >= v && chips.length < 7) {
-      chips.push(cls);
+    while (left >= v && colors.length < 12) {
+      colors.push(cls);
       left -= v;
     }
   }
-  if (!chips.length) chips.push("white");
-  return chips.map(c => `<div class="chip ${c}"></div>`).join("");
+  if (!colors.length) colors.push("white");
+  const perCol = 4;
+  const cols = [];
+  colors.forEach((cls, i) => {
+    const c = Math.floor(i / perCol);
+    if (!cols[c]) cols[c] = [];
+    cols[c].push(cls);
+  });
+  return cols.map(col => {
+    const chips = col.map((cls, i) =>
+      `<div class="chip" style="--i:${i}">${chipSVG(cls)}</div>`).join("");
+    return `<div class="chip-col">${chips}</div>`;
+  }).join("");
 }
 
 function render(s) {
