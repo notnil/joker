@@ -299,23 +299,23 @@
   .nameplate .hand { color: #9f9; font-size: 10px; }
   .nameplate .tag { color: #f66; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
   .hole { display: flex; gap: 0; justify-content: center; margin: 3px 0 2px; }
+  .seat .hole .card:not(.sm) {
+    width: 78px; height: 48px;
+    border-radius: 5px 5px 2px 2px;
+    flex-direction: row;
+    gap: 4px;
+  }
+  .seat .hole .card:not(.sm) .r { font-size: 32px; }
+  .seat .hole .card:not(.sm) .s { font-size: 34px; margin-top: 0; }
+  .seat .hole .card:not(.sm).ten .r { font-size: 24px; }
+  .seat .hole .card:not(.sm):first-child { transform: rotate(-8deg); z-index: 1; }
+  .seat .hole .card:not(.sm):last-child { transform: rotate(7deg); margin-left: -12px; z-index: 2; }
   .seat.hero .hole {
     position: relative; z-index: 1;
     margin: 4px 0 4px;
     justify-content: center;
     height: auto;
   }
-  .seat.hero .hole .card {
-    width: 78px; height: 48px;
-    border-radius: 5px 5px 2px 2px;
-    flex-direction: row;
-    gap: 4px;
-  }
-  .seat.hero .hole .card .r { font-size: 32px; }
-  .seat.hero .hole .card .s { font-size: 34px; margin-top: 0; }
-  .seat.hero .hole .card.ten .r { font-size: 24px; }
-  .seat.hero .hole .card:first-child { transform: rotate(-8deg); z-index: 1; }
-  .seat.hero .hole .card:last-child { transform: rotate(7deg); margin-left: -12px; z-index: 2; }
   .seat.hero .nameplate {
     width: 128px; margin-left: auto; margin-right: auto;
     padding: 5px 8px; z-index: 3;
@@ -657,7 +657,7 @@ function render(s) {
     const hole = document.createElement("div");
     hole.className = "hole";
     if (p.hole && p.hole.length) {
-      p.hole.forEach(c => hole.appendChild(cardEl(c, p.seat !== s.hero)));
+      p.hole.forEach(c => hole.appendChild(cardEl(c, false)));
     } else if (!p.folded && !s.done) {
       hole.appendChild(cardEl("back", true));
       hole.appendChild(cardEl("back", true));
