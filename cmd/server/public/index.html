@@ -171,41 +171,91 @@
     color: #e8f6e8; font-size: 11px; margin-top: 5px;
     letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 1px 2px #000;
   }
-  .board { display: flex; justify-content: center; gap: 12px; margin-top: 10px; min-height: 92px; }
+  .board { display: flex; justify-content: center; gap: 7px; margin-top: 10px; min-height: 100px; }
   .card.deal { animation: dealIn .38s ease-out; }
   @keyframes dealIn {
     from { transform: translateY(-16px) scale(.82); opacity: 0; }
     to { transform: none; opacity: 1; }
   }
 
+  /* Full Tilt–style faces: 4-color deck, corner indices, center pips. */
   .card {
-    width: 58px; height: 82px;
-    background: #fffef8;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0,0,0,.45), inset 0 0 0 1px #cfc6b4;
-    position: relative; color: #161616; overflow: hidden;
-    font-family: Palatino, "Palatino Linotype", Georgia, serif;
-    font-weight: 800;
+    width: 64px; height: 90px;
+    background: linear-gradient(#fffef8, #f6eedc);
+    border-radius: 6px;
+    border: 1px solid #111;
+    box-shadow:
+      0 2px 5px rgba(0,0,0,.5),
+      inset 0 0 0 1.5px #f4ead4,
+      inset 0 0 0 2.5px #222;
+    position: relative; overflow: hidden;
+    font-family: "Arial Black", "Arial Bold", Impact, Tahoma, sans-serif;
+    font-weight: 900;
+    color: #141414;
   }
-  .card.red { color: #c41212; }
-  .card .r { position: absolute; top: 2px; left: 5px; font-size: 20px; line-height: 1; }
-  .card .s { position: absolute; top: 22px; left: 4px; font-size: 24px; line-height: 1; }
+  .card.s-s { color: #141414; }
+  .card.s-h { color: #d01018; }
+  .card.s-d { color: #1a57d4; }
+  .card.s-c { color: #1a8c38; }
+  .card .idx {
+    position: absolute; top: 3px; left: 2px; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+    width: 18px; line-height: .9; pointer-events: none;
+  }
+  .card .idx .r { font-size: 16px; letter-spacing: -.06em; white-space: nowrap; }
+  .card .idx .s { font-size: 13px; margin-top: 0; }
+  .card.ten .idx { width: 22px; }
+  .card.ten .idx .r { font-size: 12px; letter-spacing: -.08em; }
+  .card .idx.br {
+    top: auto; left: auto; bottom: 3px; right: 2px;
+    transform: rotate(180deg);
+  }
+  .card .pip {
+    position: absolute; transform: translate(-50%, -50%);
+    font-size: 15px; line-height: 1;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .card .pip.inv { transform: translate(-50%, -50%) rotate(180deg); }
+  .card .pip.lg { font-size: 32px; }
+  .card .court {
+    position: absolute; inset: 19% 13% 19% 22%;
+    border: 1.5px solid currentColor; border-radius: 4px;
+    background:
+      linear-gradient(180deg, #fff4d0 0%, #e6c86a 42%, #c9a040 100%);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.28);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .card .court .cr { font-size: 20px; line-height: 1; }
+  .card .court .cs { font-size: 26px; line-height: 1; margin-top: -1px; }
   .card.back {
-    background: #7a1418; color: #e8c56a; padding: 3px;
+    background: #7a1418; color: #e8c56a; padding: 4px;
     box-shadow: 0 2px 5px rgba(0,0,0,.45);
+    border: 1px solid #3a0808;
   }
   .card.back .back-face {
-    height: 100%; border-radius: 2px; border: 1.5px solid #e6c56a;
+    height: 100%; border-radius: 3px; border: 1.5px solid #e6c56a;
     background:
-      repeating-linear-gradient(45deg, #9c1c22 0 5px, #6a1014 5px 10px),
-      repeating-linear-gradient(-45deg, #9c1c22 0 5px, #6a1014 5px 10px);
-    display: flex; align-items: center; justify-content: center; font-size: 13px;
+      radial-gradient(circle at 50% 50%, #c42830 0 18%, transparent 19%),
+      repeating-linear-gradient(45deg, #9c1c22 0 5px, #6a1014 5px 10px);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
   }
-  .card.sm { width: 30px; height: 42px; }
-  .card.sm .r { font-size: 11px; top: 1px; left: 2px; }
-  .card.sm .s { font-size: 13px; top: 13px; left: 1px; }
+  .card.back .back-face::after {
+    content: "◆"; font-size: 16px; color: #e8c56a;
+    text-shadow: 0 0 0 1px #5a1010;
+  }
+  .card.sm { width: 28px; height: 40px; border-radius: 3px; }
+  .card.sm .idx { width: 12px; top: 1px; left: 1px; }
+  .card.sm .idx .r { font-size: 10px; }
+  .card.sm .idx .s { font-size: 9px; }
+  .card.sm.ten .idx { width: 14px; }
+  .card.sm.ten .idx .r { font-size: 8px; }
+  .card.sm .idx.br, .card.sm .pip:not(.lg), .card.sm .court { display: none; }
+  .card.sm .pip.lg { font-size: 13px; left: 62%; top: 62%; }
   .card.sm.back { padding: 2px; }
-  .card.sm.back .back-face { font-size: 8px; border-width: 1px; }
+  .card.sm.back .back-face { border-width: 1px; }
+  .card.sm.back .back-face::after { font-size: 8px; }
 
   .seat {
     position: absolute; width: 140px; margin-left: -70px; margin-top: -50px;
@@ -278,19 +328,29 @@
   .nameplate .stack { color: var(--gold); font-size: 13px; font-weight: 700; }
   .nameplate .hand { color: #9f9; font-size: 10px; }
   .nameplate .tag { color: #f66; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
-  .hole { display: flex; gap: 2px; justify-content: center; margin-top: 3px; }
+  .hole { display: flex; gap: 1px; justify-content: center; margin-top: 3px; }
   .seat.hero .hole {
     position: relative; z-index: 3;
-    margin-top: -8px; margin-bottom: -20px;
-    justify-content: center; gap: 2px;
+    margin-top: -14px; margin-bottom: -32px;
+    justify-content: center; gap: 0;
+    height: 78px;
   }
   .seat.hero .hole .card {
-    width: 50px; height: 70px;
+    width: 56px; height: 78px;
   }
-  .seat.hero .hole .card:first-child { transform: rotate(-6deg); margin-right: -10px; }
-  .seat.hero .hole .card:last-child { transform: rotate(6deg); }
-  .seat.hero .hole .card .r { font-size: 26px; top: 2px; left: 5px; }
-  .seat.hero .hole .card .s { font-size: 28px; top: 28px; left: 4px; }
+  .seat.hero .hole .card:first-child {
+    transform: rotate(-18deg) translate(-2px, 6px);
+    z-index: 2;
+  }
+  .seat.hero .hole .card:last-child {
+    transform: rotate(16deg) translate(2px, 6px);
+    margin-left: -18px;
+    z-index: 3;
+  }
+  .seat.hero .hole .card .idx .r { font-size: 15px; }
+  .seat.hero .hole .card .idx .s { font-size: 12px; }
+  .seat.hero .hole .card .pip { font-size: 13px; }
+  .seat.hero .hole .card .pip.lg { font-size: 26px; }
   .seat.hero .nameplate {
     width: 128px; margin-left: auto; margin-right: auto;
     padding: 5px 8px; z-index: 2;
@@ -462,22 +522,50 @@ function avatarEl(seat) {
   return `<img src="${src}" alt="" width="70" height="70"/>`;
 }
 
+const SUIT_CLASS = { "♠": "s-s", "♥": "s-h", "♦": "s-d", "♣": "s-c" };
+const PIPS = {
+  A:  [[50, 52, 0, 1]],
+  2:  [[50, 22], [50, 78, 1]],
+  3:  [[50, 20], [50, 50], [50, 80, 1]],
+  4:  [[31, 22], [69, 22], [31, 78, 1], [69, 78, 1]],
+  5:  [[31, 22], [69, 22], [50, 50], [31, 78, 1], [69, 78, 1]],
+  6:  [[31, 22], [69, 22], [31, 50], [69, 50], [31, 78, 1], [69, 78, 1]],
+  7:  [[31, 20], [69, 20], [50, 35], [31, 50], [69, 50], [31, 80, 1], [69, 80, 1]],
+  8:  [[31, 18], [69, 18], [50, 34], [31, 50], [69, 50], [50, 66, 1], [31, 82, 1], [69, 82, 1]],
+  9:  [[31, 16], [69, 16], [31, 38], [69, 38], [50, 50], [31, 62, 1], [69, 62, 1], [31, 84, 1], [69, 84, 1]],
+  10: [[31, 15], [69, 15], [50, 27], [31, 38], [69, 38], [31, 62, 1], [69, 62, 1], [50, 73, 1], [31, 85, 1], [69, 85, 1]]
+};
+
 function splitCard(s) {
-  if (!s) return { r: "", su: "", red: false };
+  if (!s) return { r: "", su: "", cls: "s-s" };
   const r = s[0] === "T" ? "10" : s[0];
   const su = s.slice(1);
-  return { r, su, red: su === "♥" || su === "♦" };
+  return { r, su, cls: SUIT_CLASS[su] || "s-s" };
 }
 function cardEl(s, small) {
   const d = document.createElement("div");
   if (s === "back") {
     d.className = "card back" + (small ? " sm" : "");
-    d.innerHTML = `<div class="back-face">◆</div>`;
+    d.innerHTML = `<div class="back-face"></div>`;
     return d;
   }
-  const { r, su, red } = splitCard(s);
-  d.className = "card" + (red ? " red" : "") + (small ? " sm" : "");
-  d.innerHTML = `<span class="r">${r}</span><span class="s">${su}</span>`;
+  const { r, su, cls } = splitCard(s);
+  const face = r === "J" || r === "Q" || r === "K";
+  d.className = "card " + cls + (small ? " sm" : "") + (r === "10" ? " ten" : "");
+  const idx = `<div class="idx tl"><span class="r">${r}</span><span class="s">${su}</span></div>
+    <div class="idx br"><span class="r">${r}</span><span class="s">${su}</span></div>`;
+  if (small) {
+    d.innerHTML = idx + `<span class="pip lg">${su}</span>`;
+    return d;
+  }
+  if (face) {
+    d.innerHTML = idx + `<div class="court"><span class="cr">${r}</span><span class="cs">${su}</span></div>`;
+    return d;
+  }
+  const pips = (PIPS[r] || PIPS.A).map(([x, y, inv, lg]) =>
+    `<span class="pip${inv ? " inv" : ""}${lg ? " lg" : ""}" style="left:${x}%;top:${y}%">${su}</span>`
+  ).join("");
+  d.innerHTML = idx + pips;
   return d;
 }
 function parse(raw) {
