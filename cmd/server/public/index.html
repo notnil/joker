@@ -175,7 +175,6 @@
   .board .card { width: 72px; height: 100px; }
   .board .card .r { font-size: 40px; }
   .board .card .s { font-size: 46px; }
-  .board .card.ten .r { font-size: 30px; }
   .card.deal { animation: dealIn .38s ease-out; }
   @keyframes dealIn {
     from { transform: translateY(-16px) scale(.82); opacity: 0; }
@@ -199,7 +198,7 @@
   .card.s-s, .card.s-c { color: #111; }
   .card .r { font-size: 28px; line-height: .9; letter-spacing: -.04em; white-space: nowrap; }
   .card .s { font-size: 32px; line-height: 1; margin-top: 1px; }
-  .card.ten .r { font-size: 22px; }
+  .card.ten .r { letter-spacing: -.12em; }
   .card.back {
     background: #1a2c5c;
     border: 1px solid #eef2ff;
@@ -221,7 +220,6 @@
   .card.sm { width: 26px; height: 20px; border-radius: 4px 4px 1px 1px; }
   .card.sm .r { font-size: 11px; }
   .card.sm .s { font-size: 12px; margin-top: 0; }
-  .card.sm.ten .r { font-size: 9px; }
   .card.sm.back { padding: 2px; }
   .card.sm.back .back-face::after { font-size: 7px; }
   .hole .card.sm:first-child { transform: rotate(-8deg); }
@@ -300,14 +298,13 @@
   .nameplate .tag { color: #f66; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
   .hole { display: flex; gap: 0; justify-content: center; margin: 3px 0 2px; }
   .seat .hole .card:not(.sm) {
-    width: 78px; height: 48px;
+    width: 88px; height: 48px;
     border-radius: 5px 5px 2px 2px;
     flex-direction: row;
     gap: 4px;
   }
   .seat .hole .card:not(.sm) .r { font-size: 32px; }
   .seat .hole .card:not(.sm) .s { font-size: 34px; margin-top: 0; }
-  .seat .hole .card:not(.sm).ten .r { font-size: 24px; }
   .seat .hole .card:not(.sm):first-child { transform: rotate(-8deg); z-index: 1; }
   .seat .hole .card:not(.sm):last-child { transform: rotate(7deg); margin-left: -12px; z-index: 2; }
   .seat.hero .hole {
