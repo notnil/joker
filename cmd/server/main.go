@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,8 +11,13 @@ import (
 
 func main() {
 	dir := publicDir()
-	log.Printf("serving %s on :8080", dir)
-	log.Fatal(http.ListenAndServe(":8080", http.FileServer(http.Dir(dir))))
+	// tcp4 so port-forwarders that only scan IPv4 sockets can see :8080.
+	ln, err := net.Listen("tcp4", "0.0.0.0:8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("serving %s on http://localhost:8080", dir)
+	log.Fatal(http.Serve(ln, http.FileServer(http.Dir(dir))))
 }
 
 func publicDir() string {
