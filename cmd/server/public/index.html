@@ -171,7 +171,11 @@
     color: #e8f6e8; font-size: 11px; margin-top: 5px;
     letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 1px 2px #000;
   }
-  .board { display: flex; justify-content: center; gap: 6px; margin-top: 10px; min-height: 88px; }
+  .board { display: flex; justify-content: center; gap: 6px; margin-top: 10px; min-height: 108px; }
+  .board .card { width: 72px; height: 100px; }
+  .board .card .r { font-size: 40px; }
+  .board .card .s { font-size: 46px; }
+  .board .card.ten .r { font-size: 30px; }
   .card.deal { animation: dealIn .38s ease-out; }
   @keyframes dealIn {
     from { transform: translateY(-16px) scale(.82); opacity: 0; }
@@ -302,12 +306,14 @@
     height: auto;
   }
   .seat.hero .hole .card {
-    width: 52px; height: 42px;
+    width: 64px; height: 40px;
     border-radius: 5px 5px 2px 2px;
+    flex-direction: row;
+    gap: 3px;
   }
-  .seat.hero .hole .card .r { font-size: 20px; }
-  .seat.hero .hole .card .s { font-size: 22px; }
-  .seat.hero .hole .card.ten .r { font-size: 16px; }
+  .seat.hero .hole .card .r { font-size: 22px; }
+  .seat.hero .hole .card .s { font-size: 24px; margin-top: 0; }
+  .seat.hero .hole .card.ten .r { font-size: 17px; }
   .seat.hero .hole .card:first-child { transform: rotate(-8deg); z-index: 1; }
   .seat.hero .hole .card:last-child { transform: rotate(7deg); margin-left: -12px; z-index: 2; }
   .seat.hero .nameplate {
