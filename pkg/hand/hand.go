@@ -76,7 +76,7 @@ const (
 	// ASC is ascending order
 	ASC Ordering = iota + 1
 
-	// DESC is ascending order
+	// DESC is descending order
 	DESC
 )
 
@@ -148,9 +148,17 @@ type Hand struct {
 // less than five cards, the best ranking will be calculated for the
 // cards given.
 func New(cards []Card, options ...func(*Config)) *Hand {
-	c := &Config{}
+	c := &Config{sorting: SortingHigh}
 	for _, option := range options {
 		option(c)
+	}
+	if len(cards) == 0 {
+		return &Hand{
+			ranking:     HighCard,
+			cards:       nil,
+			description: "no cards",
+			config:      c,
+		}
 	}
 	combos := cardCombos(cards)
 	hands := []*Hand{}
@@ -193,14 +201,15 @@ func (h *Hand) CompareTo(o *Hand) int {
 	}
 	hCards := h.Cards()
 	oCards := o.Cards()
-	for i := 0; i < 5; i++ {
+	n := min(5, len(hCards), len(oCards))
+	for i := 0; i < n; i++ {
 		hCard, oCard := hCards[i], oCards[i]
 		hIndex, oIndex := hCard.Rank(), oCard.Rank()
 		if hIndex != oIndex {
 			return int(hIndex) - int(oIndex)
 		}
 	}
-	return 0
+	return len(hCards) - len(oCards)
 }
 
 type handJSON struct {
@@ -224,7 +233,9 @@ func (h *Hand) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-//  The json format is:
+//
+//	The json format is:
+//
 // {"ranking":10,"cards":["A♠","K♠","Q♠","J♠","T♠"],"description":"royal flush","config":{"sorting":1,"ignoreStraights":false,"ignoreFlushes":false,"aceIsLow":false}}
 func (h *Hand) UnmarshalJSON(b []byte) error {
 	m := &handJSON{}

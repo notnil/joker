@@ -51,11 +51,11 @@ func (d *Deck) UnmarshalText(text []byte) error {
 	strs := strings.Split(string(text), ",")
 	cards := make([]Card, len(strs))
 	for i, s := range strs {
-		var card *Card
+		var card Card
 		if err := card.UnmarshalText([]byte(s)); err != nil {
 			return err
 		}
-		cards[i] = *card
+		cards[i] = card
 	}
 	d.Cards = cards
 	return nil

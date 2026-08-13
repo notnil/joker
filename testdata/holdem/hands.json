@@ -1,0 +1,42 @@
+[
+  {
+    "name": "heads-up-button-folds",
+    "seats": 2,
+    "button": 0,
+    "stakes": {"sb": 50, "bb": 100, "ante": 0},
+    "stacks": [1000, 1000],
+    "deck": ["As", "Ks", "2h", "3h"],
+    "actions": [{"type": "fold"}],
+    "expectStacks": [950, 1050]
+  },
+  {
+    "name": "three-handed-fold-to-bb",
+    "seats": 3,
+    "button": 0,
+    "stakes": {"sb": 50, "bb": 100, "ante": 0},
+    "stacks": [1000, 1000, 1000],
+    "deck": ["As", "Ks", "Ah", "Kh", "2d", "3d"],
+    "actions": [{"type": "fold"}, {"type": "fold"}],
+    "expectStacks": [1000, 950, 1050]
+  },
+  {
+    "name": "heads-up-antes-fold",
+    "seats": 2,
+    "button": 0,
+    "stakes": {"sb": 50, "bb": 100, "ante": 10},
+    "stacks": [1000, 1000],
+    "deck": ["As", "Ks", "2h", "3h"],
+    "actions": [{"type": "fold"}],
+    "expectStacks": [940, 1060]
+  },
+  {
+    "name": "three-way-all-in-side-pots",
+    "seats": 3,
+    "button": 0,
+    "stakes": {"sb": 50, "bb": 100, "ante": 0},
+    "stacks": [1000, 300, 500],
+    "deck": ["Ah", "Ad", "Kc", "Kd", "2s", "3s", "2h", "7c", "8d", "9s", "Jc"],
+    "actions": [{"type": "raise", "chips": 1000}, {"type": "allin"}, {"type": "allin"}],
+    "expectStacks": [500, 900, 400]
+  }
+]

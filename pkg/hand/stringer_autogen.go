@@ -9,8 +9,9 @@ const _Ranking_name = "HighCardPairTwoPairThreeOfAKindStraightFlushFullHouseFour
 var _Ranking_index = [...]uint8{8, 12, 19, 31, 39, 44, 53, 64, 77, 87}
 
 func (i Ranking) String() string {
+	i -= 1
 	if i < 0 || i >= Ranking(len(_Ranking_index)) {
-		return fmt.Sprintf("Ranking(%d)", i)
+		return fmt.Sprintf("Ranking(%d)", i+1)
 	}
 	hi := _Ranking_index[i]
 	lo := uint8(0)
